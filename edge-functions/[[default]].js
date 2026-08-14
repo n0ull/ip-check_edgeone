@@ -145,7 +145,16 @@ function renderWebrtcPage(base) {
   rows.push('function $(id){return document.getElementById(id)}');
   rows.push('function addIp(arr, ip){ if(ip && arr.indexOf(ip) < 0) arr.push(ip); }');
   rows.push('function isPublicIp(ip){ return /^([0-9]{1,3}[.]){3}[0-9]{1,3}$/.test(ip) ? !/^(10[.]|127[.]|169[.]254[.]|192[.]168[.]|172[.](1[6-9]|2[0-9]|3[01])[.])/.test(ip) : !/^f[cd][0-9a-f]{2}:|^fe80:/.test(ip); }');
-  rows.push('function extractIp(line){ var m = line.match(/([0-9]{1,3}[.]){3}[0-9]{1,3}|[0-9a-f:]+:[0-9a-f:]+/i); return m ? m[0] : null; }');
+  rows.push('function extractIp(line){');
+  rows.push('  var toks = line.split(\' \');');
+  rows.push('  for(var i=0;i<toks.length;i++){');
+  rows.push('    var t = toks[i];');
+  rows.push('    if(!t || t === \'0.0.0.0\' || t === \'::\') continue;');
+  rows.push('    if(/^([0-9]{1,3}[.]){3}[0-9]{1,3}$/.test(t)) return t;');
+  rows.push('    if(t.indexOf(\':\') !== -1 && /^[0-9a-f:.]+$/i.test(t) && (t.indexOf(\'::\') !== -1 || t.split(\':\').length >= 4)) return t;');
+  rows.push('  }');
+  rows.push('  return null;');
+  rows.push('}');
   rows.push('function detect(timeout){ return new Promise(function(resolve){');
   rows.push('  var out = { pub: [], loc: [], err: null };');
   rows.push('  var done = false;');
