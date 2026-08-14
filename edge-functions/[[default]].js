@@ -141,11 +141,11 @@ function renderWebrtcPage(base) {
   rows.push('<div class="note">说明：检测依赖 STUN 服务器（stun.miwifi.com），个别网络不可达时仅显示局域网 IP。浏览器以 mDNS 隐藏局域网地址时显示为 .local。WebRTC 泄露指浏览器绕过 VPN/代理暴露真实公网 IP，本页可帮助判断当前浏览器是否如此。</div>');
   rows.push('</div>');
   rows.push('<script>');
-  rows.push('var BASE = \'__BASE__\';');
+  // 内嵌浏览器 JS 的正则不使用反斜杠转义（\d、\. 会被外层字符串消化），统一用字符类 [0-9]、[.]
   rows.push('function $(id){return document.getElementById(id)}');
   rows.push('function addIp(arr, ip){ if(ip && arr.indexOf(ip) < 0) arr.push(ip); }');
-  rows.push('function isPublicIp(ip){ return /^(\d{1,3}\.){3}\d{1,3}$/.test(ip) ? !/^(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.)/.test(ip) : !/^f[cd][0-9a-f]{2}:|^fe80:/.test(ip); }');
-  rows.push('function extractIp(line){ var m = line.match(/(\d{1,3}\.){3}\d{1,3}|[0-9a-f:]+:[0-9a-f:]+/i); return m ? m[0] : null; }');
+  rows.push('function isPublicIp(ip){ return /^([0-9]{1,3}[.]){3}[0-9]{1,3}$/.test(ip) ? !/^(10[.]|127[.]|169[.]254[.]|192[.]168[.]|172[.](1[6-9]|2[0-9]|3[01])[.])/.test(ip) : !/^f[cd][0-9a-f]{2}:|^fe80:/.test(ip); }');
+  rows.push('function extractIp(line){ var m = line.match(/([0-9]{1,3}[.]){3}[0-9]{1,3}|[0-9a-f:]+:[0-9a-f:]+/i); return m ? m[0] : null; }');
   rows.push('function detect(timeout){ return new Promise(function(resolve){');
   rows.push('  var out = { pub: [], loc: [], err: null };');
   rows.push('  var done = false;');
@@ -167,8 +167,8 @@ function renderWebrtcPage(base) {
   rows.push('async function run(){');
   rows.push('  var btn = $(\'run\'); btn.disabled = true; btn.textContent = \'检测中…\';');
   rows.push('  var r = await detect(4000);');
-  rows.push('  $(\'pub\').textContent = r.pub.length ? r.pub.join(\'\n\') : (r.err ? \'—（\' + r.err + \'）\' : \'—（未获取到公网映射）\');');
-  rows.push('  $(\'loc\').textContent = r.loc.length ? r.loc.join(\'\n\') : \'—（未发现或已被 mDNS 隐藏）\';');
+  rows.push('  $(\'pub\').textContent = r.pub.length ? r.pub.join(\'\\n\') : (r.err ? \'—（\' + r.err + \'）\' : \'—（未获取到公网映射）\');');
+  rows.push('  $(\'loc\').textContent = r.loc.length ? r.loc.join(\'\\n\') : \'—（未发现或已被 mDNS 隐藏）\';');
   rows.push('  var ext = await fetchIp(\'/test\');');
   rows.push('  $(\'ext\').textContent = ext || \'—\';');
   rows.push('  var verdict = $(\'verdict\');');

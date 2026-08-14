@@ -152,6 +152,12 @@ await section('[[default]].js · 路径端点', async () => {
   check('/webrtc 返回检查页 HTML', r.res.status === 200 && (r.res.headers.get('content-type') || '').includes('text/html') && r.body.includes('WebRTC'));
   check('/webrtc 页面含浏览器端检测逻辑', r.body.includes('RTCPeerConnection') && r.body.includes('onicecandidate') && r.body.includes('stun:stun.miwifi.com'));
   check('/webrtc 页面不含服务端 IP 注入（纯浏览器检测）', !r.body.includes('request.eo'));
+  // 回归防护：内嵌浏览器 JS 的转义（\\d、\\n 等会被外层字符串消化，正则必须用字符类写法）
+  const _wm = r.body.match(/<script>([\s\S]*?)<\/script>/);
+  let _jsOk = false;
+  if (_wm) { try { new Function(_wm[1]); _jsOk = true; } catch (_) {} }
+  check('/webrtc 内嵌 JS 语法有效', _jsOk);
+  check('/webrtc 内嵌 JS 正则未丢失转义', r.body.includes('([0-9]{1,3}[.]){3}[0-9]{1,3}') && !r.body.includes('{1,3}.){3}'));
 
   r = await call(catchAllMod, 'ip.example.com', '/nope', { eo: eo4 });
   check('未知路径 → 404 JSON', r.res.status === 404);
