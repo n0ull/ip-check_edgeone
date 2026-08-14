@@ -119,7 +119,6 @@ function handleV6(request, ip) {
 function handleTest(request, ip) {
   if (!ip) return textResponse('无法获取客户端 IP 地址。\n', 400);
   const family = isIpv6(ip) ? 'IPv6' : 'IPv4';
-  const preferred = family; // 本次双栈连接实际使用的协议族即为访问优先的协议族
   if (wantsJson(request)) {
     // 语义严谨：仅当本次连接确为 IPv6 时输出 ipv6Preferred；
     // IPv4 连接无法判定“IPv6 是否存在/是否优先”，故不输出该字段
@@ -127,10 +126,14 @@ function handleTest(request, ip) {
     if (family === 'IPv6') payload.ipv6Preferred = true;
     return jsonResponse(payload);
   }
-  return textResponse(ip + '\n', 200, { 'x-ip-family': family, 'x-ip-preferred': preferred });
+  // x-ip-preferred 与 ipv6Preferred 对齐：仅 IPv6 连接时输出；IPv4 连接无法判定『优先』，不输出该头
+  const extra = { 'x-ip-family': family };
+  if (family === 'IPv6') extra['x-ip-preferred'] = 'IPv6';
+  return textResponse(ip + '\n', 200, extra);
 }
 
-function renderUi(family, base) {
+/** 查询网页模板：仅 __VERDICT_CLS__/__VERDICT__/__BASE__ 三处占位符，模块加载时构建一次，请求时只做替换 */
+const UI_TEMPLATE = (() => {
   const rows = [];
   rows.push('<!doctype html>');
   rows.push('<html lang="zh-CN">');
@@ -244,7 +247,11 @@ function renderUi(family, base) {
   rows.push("  init();");
   rows.push("  </script>");
   rows.push('</body></html>');
-  let html = rows.join('\n');
+  return rows.join('\n');
+})();
+
+function renderUi(family, base) {
+  let html = UI_TEMPLATE;
   // 占位符替换（徽章判定与 BASE），并做基础转义避免注入
   const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const safeBase = String(base).replace(/[^a-zA-Z0-9.-]/g, '');
@@ -256,6 +263,10 @@ function renderUi(family, base) {
 
 export async function onRequest(context) {
   const { request } = context;
+  // 方法门禁：本服务只有 IP 回显与页面，非 GET/HEAD 一律 405
+  if (request.method !== 'GET' && request.method !== 'HEAD') {
+    return textResponse('仅支持 GET/HEAD 请求。\n', 405, { allow: 'GET, HEAD' });
+  }
   const info = hostInfo(request);
   const ip = getClientIp(request);
   const family = ip ? (isIpv6(ip) ? 'IPv6' : 'IPv4') : '未知';

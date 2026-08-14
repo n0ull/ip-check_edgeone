@@ -11,7 +11,10 @@ jobs:
     permissions:
       pull-requests: write
     steps:
+      # pull_request_target 默认检出 base 分支；必须显式检出 PR 头部，否则预览部署的是 main 的代码
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4

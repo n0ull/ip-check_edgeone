@@ -12,7 +12,7 @@ Status: implemented
 在仓库中提供两个 GitHub Actions 工作流与一个一键部署入口：
 
 - `.github/workflows/deploy.yml`：向 `main` 推送时部署**生产环境**。步骤为 checkout → setup-node（22.11.0）→ `npx edgeone makers deploy -n ip-check -a overseas -t ${{ secrets.EDGEONE_API_TOKEN }}`；
-- `.github/workflows/preview.yml`：`pull_request_target` 的 `opened` 事件触发，部署**预览环境**（`-e preview --json`），用 python3 解析输出的 `url`/`projectId`，经 `thollander/actions-comment-pull-request` 在 PR 评论区附预览链接；
+- `.github/workflows/preview.yml`：`pull_request_target` 的 `opened` 事件触发，部署**预览环境**（`-e preview --json`）。checkout 显式指定 `ref: ${{ github.event.pull_request.head.sha }}`——`pull_request_target` 默认检出 base 分支，不指定则预览部署的是 main 而非 PR 代码；部署输出用 python3 解析 `url`/`projectId`，经 `thollander/actions-comment-pull-request` 在 PR 评论区附预览链接；
 - 前置条件：GitHub 仓库 secret `EDGEONE_API_TOKEN`（Makers 控制台生成，见[API Token 文档](https://cloud.tencent.com/document/product/1552/127422)）；
 - README 顶部的一键部署按钮（[部署按钮文档](https://cloud.tencent.com/document/product/1552/127397)）：`makers/new?repository-url=<仓库 URL>&project-name=ip-check`，把仓库作为部署源直接创建项目。
 
@@ -28,4 +28,4 @@ Status: implemented
 ## Consequences
 
 推送 main 即自动发布生产（建议配合分支保护与 PR 评审流程）；PR 预览让页面改动在合并前可见。
-代价：`pull_request_target` 在未合并代码的仓库默认环境下运行，工作流仅使用仓库内文件与 secret，无外部代码执行；生产发布依赖 `EDGEONE_API_TOKEN` 的权限边界（建议使用最小权限的专用 Token）。
+代价：preview 工作流检出 PR 头部代码并在持有 `EDGEONE_API_TOKEN` 的环境中部署——CLI 对仓库文件只做打包上传、不在 CI 执行函数代码，但 PR 对仓库文件的修改会随 checkout 进入 runner，评审时需留意工作流与脚本文件的改动；生产发布依赖 `EDGEONE_API_TOKEN` 的权限边界（建议使用最小权限的专用 Token）。

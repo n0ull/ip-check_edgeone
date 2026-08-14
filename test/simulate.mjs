@@ -32,7 +32,7 @@ function check(name, cond, detail) {
 
 function makeRequest(host, pathname, opts) {
   const req = new Request('https://' + host + (pathname || '/'), {
-    method: 'GET',
+    method: (opts && opts.method) || 'GET',
     headers: opts && opts.headers ? opts.headers : {},
   });
   if (opts && opts.eo) {
@@ -83,7 +83,7 @@ await section('index.js · Host 分发', async () => {
   check('test. x-ip-preferred=IPv6', r.res.headers.get('x-ip-preferred') === 'IPv6');
   r = await call(indexMod, 'test.ip.example.com', '/', { eo: eo4 });
   check('test. IPv4 连接返回 IPv4 地址', r.res.status === 200 && r.body.trim() === '1.2.3.4');
-  check('test. x-ip-preferred=IPv4', r.res.headers.get('x-ip-preferred') === 'IPv4');
+  check('test. IPv4 连接不输出 x-ip-preferred（无法判定优先）', r.res.headers.get('x-ip-preferred') === null);
 
   // test. 支持 ?format=json
   r = await call(indexMod, 'test.ip.example.com', '/?format=json', { eo: eo6 });
@@ -109,6 +109,12 @@ await section('index.js · Host 分发', async () => {
   check('UI 判定措辞严谨（IPv4 连接/无法判定）', r.body.includes('IPv4 连接') && r.body.includes('无法判定 IPv6 是否存在') && !r.body.includes('IPv4 访问优先'));
   check('主页含 WebRTC 检查入口', r.body.includes('/webrtc'));
 
+  // 回归防护：主页内嵌 JS 语法有效性（同 /webrtc 的 new Function 校验，防外层字符串消化转义）
+  const _um = r.body.match(/<script>([\s\S]*?)<\/script>/);
+  let _ujsOk = false;
+  if (_um) { try { new Function(_um[1]); _ujsOk = true; } catch (_) {} }
+  check('UI 内嵌 JS 语法有效', _ujsOk);
+
   // 无 eo 时回退 X-Forwarded-For
   r = await call(indexMod, '4.ip.example.com', '/', { headers: { 'x-forwarded-for': '203.0.113.7, 10.0.0.1' } });
   check('无 eo 时回退 X-Forwarded-For', r.body.trim() === '203.0.113.7', 'body=' + JSON.stringify(r.body));
@@ -120,6 +126,10 @@ await section('index.js · Host 分发', async () => {
   // 生产环境（存在 eo 对象）：即使 clientIp 缺失，也忽略可伪造的 X-Forwarded-For
   r = await call(indexMod, '4.ip.example.com', '/', { eo: { clientIp: '', geo: {} }, headers: { 'x-forwarded-for': '203.0.113.9' } });
   check('生产环境忽略伪造代理头', r.res.status === 400, 'status=' + r.res.status);
+
+  // 方法门禁：非 GET/HEAD 一律 405 并带 Allow 头
+  r = await call(indexMod, '4.ip.example.com', '/', { eo: eo4, method: 'POST' });
+  check('POST 4. 根路径 → 405 + Allow', r.res.status === 405 && (r.res.headers.get('allow') || '').includes('GET'));
 });
 
 // ---------- [[default]].js：路径端点 ----------
@@ -134,6 +144,13 @@ await section('[[default]].js · 路径端点', async () => {
   r = await call(catchAllMod, 'ip.example.com', '/api/v4?format=json', { eo: eo4 });
   let j = null; try { j = JSON.parse(r.body); } catch (_) {}
   check('/api/v4?format=json 输出 JSON', !!j && j.ip === '8.8.8.8' && j.family === 'IPv4');
+
+  r = await call(catchAllMod, 'ip.example.com', '/api/v4', { eo: eo4, headers: { accept: 'application/json' } });
+  j = null; try { j = JSON.parse(r.body); } catch (_) {}
+  check('/api/v4 Accept: application/json 输出 JSON', !!j && j.ip === '8.8.8.8' && j.family === 'IPv4');
+
+  r = await call(catchAllMod, 'ip.example.com', '/4', { eo: eo4, method: 'POST' });
+  check('POST /4 → 405 + Allow', r.res.status === 405 && (r.res.headers.get('allow') || '').includes('GET'));
 
   r = await call(catchAllMod, 'ip.example.com', '/6', { eo: eo6 });
   check('/6 返回 IPv6', r.res.status === 200 && r.body.trim() === '2001:db8::1');

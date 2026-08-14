@@ -1,0 +1,8 @@
+#!/bin/sh
+# 提交前预检：边缘函数语法检查 + 全量本地验证
+# （Host 分发/路径端点断言、WebRTC DOM 沙箱、双文件内联一致性、Agent Note 格式校验）
+# 由 scripts/install-hooks.mjs（npm prepare）启用：git config core.hooksPath .githooks
+set -e
+node --check edge-functions/index.js
+node --check "edge-functions/[[default]].js"
+npm test

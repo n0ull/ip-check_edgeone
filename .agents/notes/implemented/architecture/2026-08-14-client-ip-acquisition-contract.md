@@ -23,4 +23,4 @@ IP 查询服务的正确性完全取决于**客户端真实 IP** 的获取。两
 ## Consequences
 
 线上返回的 IP 只可能来自 EdgeOne 注入的真实源地址；伪造代理头的请求得到与无头请求相同的结果（400 或真实 IP）。
-代价是两份内联拷贝需要同步维护（已在[约定笔记](../process/2026-08-14-agent-note-conventions.md)中列为事实性同步点）。
+代价是两份内联拷贝需要同步维护（已在[约定笔记](../process/2026-08-14-agent-note-conventions.md)中列为事实性同步点），双份一致性由 `test/consistency.mjs` 随 `npm test` 机械校验（见[一致性校验笔记](../testing/2026-08-15-dual-inline-consistency-and-test-gates.md)）。

@@ -7,4 +7,4 @@
 - **部署必须带 `-a overseas`**（区域参数不持久化，漏带回退 global；区域不可变，换区域须删项目重建）；DNS 全 CNAME 且 Cloudflare 灰云；`4.` 站点关 IPv6。[管理](.agents/notes/implemented/process/2026-08-14-deployment-area-and-domain-management.md)
 - **语义措辞严谨**：IPv4 连接只称『连接』不称『优先』；`ipv6Preferred` 仅在 IPv6 时输出。[语义](.agents/notes/implemented/feature/2026-08-14-protocol-family-semantics.md)
 - **非平凡变更必须携带 Agent Note**（格式契约见 [.agents/notes/README.md](.agents/notes/README.md)，机械校验 `npm run verify:notes`）；修改函数行为后同步更新测试断言与 [README.md](README.md)。
-- **开发验证**：`npm test`（34 项断言）+ `node --check` 两个函数文件；部署用 `npm run deploy`。[工作流](.agents/skills/ip-service-workflow/SKILL.md)
+- **开发验证**：`npm test`（simulate 逻辑断言 + webrtc-dom 沙箱 + consistency 双文件一致性 + verify:notes）+ `node --check` 两个函数文件；pre-commit 钩子自动执行（`npm install` 启用）；部署用 `npm run deploy`。[工作流](.agents/skills/ip-service-workflow/SKILL.md)

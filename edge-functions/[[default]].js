@@ -9,7 +9,8 @@
  *   /api/self             → 返回本次请求的 IP 与协议族（JSON）
  *
  * 注意：curl 4.ip.<domain> / test.ip.<domain>（根路径）由 index.js 按 Host 分发；不再提供 6. 子域。
- * 为保证边缘构建器兼容性，本文件与 index.js 各自内联了相同的工具函数，不跨文件 import。
+ * 为保证边缘构建器兼容性，本文件与 index.js 各自内联了相同的工具函数，不跨文件 import；
+ * 双份一致性由 test/consistency.mjs 随 npm test 机械校验。
  */
 
 function isIpv4(ip) {
@@ -75,7 +76,11 @@ function wantsJson(request) {
 function handleV4(request, ip) {
   if (!ip) return textResponse('无法获取客户端 IP 地址。\n', 400);
   if (isIpv6(ip)) {
-    return textResponse('当前通过 IPv6 连接，无法获取您的 IPv4 地址（请在 4.<domain> 站点关闭 IPv6 访问，或使用 test 端点）。\n', 400);
+    return textResponse(
+      '当前通过 IPv6 连接，无法获取您的 IPv4 地址。\n' +
+      '请在 4.<domain> 的站点设置中关闭 IPv6 访问（强制仅 IPv4 可达），或改用 test 端点。\n',
+      400
+    );
   }
   if (wantsJson(request)) return jsonResponse({ ip, family: 'IPv4', service: 'edgeone-ip' });
   return textResponse(ip + '\n', 200, { 'x-ip-family': 'IPv4' });
@@ -84,7 +89,11 @@ function handleV4(request, ip) {
 function handleV6(request, ip) {
   if (!ip) return textResponse('无法获取客户端 IP 地址。\n', 400);
   if (isIpv4(ip)) {
-    return textResponse('当前通过 IPv4 连接，无法获取您的 IPv6 地址（请通过支持 IPv6 的网络访问 6.<domain>，或使用 test 端点）。\n', 400);
+    return textResponse(
+      '当前通过 IPv4 连接，无法获取您的 IPv6 地址。\n' +
+      '请通过支持 IPv6 的网络访问 6.<domain>（该域名为双栈，IPv6 客户端自动优先走 IPv6），或改用 test 端点。\n',
+      400
+    );
   }
   if (wantsJson(request)) return jsonResponse({ ip, family: 'IPv6', service: 'edgeone-ip' });
   return textResponse(ip + '\n', 200, { 'x-ip-family': 'IPv6' });
@@ -100,11 +109,14 @@ function handleTest(request, ip) {
     if (family === 'IPv6') payload.ipv6Preferred = true;
     return jsonResponse(payload);
   }
-  return textResponse(ip + '\n', 200, { 'x-ip-family': family, 'x-ip-preferred': family });
+  // x-ip-preferred 与 ipv6Preferred 对齐：仅 IPv6 连接时输出；IPv4 连接无法判定『优先』，不输出该头
+  const extra = { 'x-ip-family': family };
+  if (family === 'IPv6') extra['x-ip-preferred'] = 'IPv6';
+  return textResponse(ip + '\n', 200, extra);
 }
 
-/** WebRTC 检查页：纯浏览器端检测（RTCPeerConnection + ICE candidates），结果不发送到服务器 */
-function renderWebrtcPage(base) {
+/** WebRTC 检查页：纯浏览器端检测（RTCPeerConnection + ICE candidates），结果不发送到服务器；页面无动态占位符，模块加载时构建一次 */
+const WEBRTC_HTML = (() => {
   const rows = [];
   rows.push('<!doctype html>');
   rows.push('<html lang="zh-CN">');
@@ -193,10 +205,14 @@ function renderWebrtcPage(base) {
   rows.push('</script>');
   rows.push('</body></html>');
   return rows.join('\n');
-}
+})();
 
 export async function onRequest(context) {
   const { request } = context;
+  // 方法门禁：本服务只有 IP 回显与页面，非 GET/HEAD 一律 405
+  if (request.method !== 'GET' && request.method !== 'HEAD') {
+    return textResponse('仅支持 GET/HEAD 请求。\n', 405, { allow: 'GET, HEAD' });
+  }
   let path = '/';
   try {
     const u = new URL(request.url);
@@ -217,14 +233,10 @@ export async function onRequest(context) {
     case '/api/test':
       return handleTest(request, ip);
     case '/webrtc':
-      {
-        const u = new URL(request.url);
-        const base = u.hostname;
-        return new Response(renderWebrtcPage(base), {
-          status: 200,
-          headers: baseHeaders({ 'content-type': 'text/html; charset=utf-8' }),
-        });
-      }
+      return new Response(WEBRTC_HTML, {
+        status: 200,
+        headers: baseHeaders({ 'content-type': 'text/html; charset=utf-8' }),
+      });
     case '/api/self':
       return jsonResponse({
         ip: ip || null,
