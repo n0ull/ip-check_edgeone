@@ -18,7 +18,7 @@ description: 'IP 查询服务（EdgeOne Makers Edge Functions）的开发、验�
 ## 开发与本地验证
 
 1. 修改 `edge-functions/` 前先阅读对应 Agent Note，确认行为变更是否需要更新笔记；`getClientIp` 与响应工具函数在 `index.js` 与 `[[default]].js` 双份内联，改一必改二。
-2. 语法与逻辑验证：`node --check edge-functions/index.js` 与 `node --check "edge-functions/[[default]].js"`，然后 `npm test`（`test/simulate.mjs`，覆盖 Host 分发、路径端点、防伪造、UI 注入与措辞断言）。
+2. 语法与逻辑验证：`node --check edge-functions/index.js` 与 `node --check "edge-functions/[[default]].js"`，然后 `npm test`（`test/simulate.mjs` 逻辑断言 + `test/webrtc-dom.mjs` DOM 沙箱 + `test/consistency.mjs` 双文件一致性 + `verify-agent-notes.mjs` 笔记格式）。
 3. 本地联调可 `edgeone makers dev`（8088 端口，`/4` `/6` `/test` 路径端点；无 `eo` 时回退代理头）。
 
 ## 部署
@@ -39,6 +39,6 @@ npm run deploy:preview  # 预览环境
 ## 线上排查
 
 1. 区分服务状态与访问方式：`curl https://4.ip.<域名>/` 应返回 IPv4；`curl http://…` 会收到 301 空 body（无输出是正常的，用 `https://` 或 `-L`）；默认域名不带令牌 Cookie 会 401。
-2. 验证服务本身：`node` 脚本请求 `/4` `/test` `/api/self`（带 Cookie），对照 [README 端点表](../../../README.md) 的『六、端点汇总』一节。
+2. 验证服务本身：`node` 脚本请求 `/4` `/test` `/api/self`（带 Cookie），对照 [README 端点表](../../../README.md) 的『五、端点汇总』一节。
 3. 检查 DNS：`Resolve-DnsName` 确认 `4.` 仅 A 记录、`test.`/`ip.` 双栈，最终解析到 EdgeOne 地址（`*.pages.dnsoe*.com` 的 A/AAAA）。
 4. 行为变更（协议族语义、端点、响应头）更新测试断言并同步 README 与 Agent Note。
