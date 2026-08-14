@@ -9,6 +9,7 @@
 - `curl 4.ip.<域名>` → 直接返回访问者的 **IPv4** 地址（纯文本）
 - `curl test.ip.<域名>` → 返回本次双栈连接实际使用的 IP：**返回 IPv6 地址即代表 IPv6 访问优先**（该 IPv6 即你的 IPv6 地址）
 - 浏览器访问 `https://ip.<域名>` → 查询网页（UI），展示 IPv4、IPv6（经双栈测试派生）、是否 IPv6 优先
+- 浏览器访问 `https://ip.<域名>/webrtc` → WebRTC 泄漏检查（公网/局域网 IP 与泄漏判定，纯浏览器端）
 - 仅返回 IP 地址，不包含 IP 属地、ASN 信息
 
 ## 工作原理
@@ -167,6 +168,11 @@ npx edgeone makers deploy -n ip-check -a overseas -e preview -t ${{ secrets.EDGE
 
 注意：`-a overseas` 必须携带（区域参数不持久化，漏带会回退 global）；本项目无构建步骤，工作流不执行 `npm run build`，由 CLI 直接构建上传当前目录。
 
+> ⚠️ **Provider 冲突**：CLI 直传部署只支持 Provider 为 Upload 的项目。若同名项目通过一键部署按钮或控制台以 GitHub 仓库创建（Provider: Github），
+> 命令行部署会报 `Project ip-check exists but has Provider 'Github'` 而失败。两种部署方式互斥：
+> 使用 GitHub Actions 时，请在控制台删除多余的 GitHub 集成项目（保留 CLI 直传项目）；
+> 若改用 GitHub 集成（推送触发），则删除 Actions 工作流并把自定义域名迁移到新项目。
+
 ## 五、域名与 DNS 配置（关键步骤）
 
 ### 1. 添加自定义域名
@@ -233,6 +239,7 @@ open https://ip.example.com/          # 网页：同时展示 IPv4 / IPv6 / IPv6
 | `https://ip.<域名>/6` | 纯文本 IPv6 | 路径式；仅 IPv6 连接时返回（尽力而为，同源调试用） |
 | `https://ip.<域名>/test` | 纯文本连接 IP | 路径式（本地调试用） |
 | `https://ip.<域名>/api/self` | JSON | `{"ip": "...", "family": "IPv4\|IPv6"}` |
+| `https://ip.<域名>/webrtc` | HTML 检查页 | WebRTC 公网/局域网 IP 检测与泄漏判定（浏览器端） |
 
 所有端点均支持 `?format=json` 输出 JSON（Accept: application/json 亦可）。
 响应头包含 `Access-Control-Allow-Origin: *`（网页跨子域请求需要）与 `Cache-Control: no-store`（IP 回显不能被缓存）。
@@ -252,7 +259,7 @@ open https://ip.example.com/          # 网页：同时展示 IPv4 / IPv6 / IPv6
 
 - **[AGENTS.md](AGENTS.md)** —— 站立命令：代理每次会话都需要的规则（三域名定案、IP 契约、部署参数、措辞纪律），每条一行并链接依据。
 - **[.agents/notes/](.agents/notes/README.md)** —— Agent Note 决策记录。路径格式为 `notes/{生命周期}/{分类}/yyyy-mm-dd-主题.md`，统一格式为 `# Agent Note:` + `Status:` + `Problem`/`Decision`/`Alternatives considered`/`Consequences`，由 `npm run verify:notes` 机械校验。
-  已记录六篇决策：平台约束、IP 契约、UI 回退、语义措辞、部署管理、GitHub Actions 自动部署。`implemented/` 与 `archived/` 目录各有 AGENTS.md 定义维护边界与冻结规则。`skills/` 下为可复用工作流 [ip-service-workflow](.agents/skills/ip-service-workflow/SKILL.md)。
+  已记录七篇决策：平台约束、IP 契约、UI 回退、语义措辞、部署管理、GitHub Actions 自动部署、WebRTC 检查。`implemented/` 与 `archived/` 目录各有 AGENTS.md 定义维护边界与冻结规则。`skills/` 下为可复用工作流 [ip-service-workflow](.agents/skills/ip-service-workflow/SKILL.md)。
 - **本文档** —— 部署参考手册：端到端操作步骤、DNS/站点配置表、端点与验证命令，不承载决策史。
 
 规则：非平凡变更（行为、架构、契约、流程、测试策略、配置格式）必须同变更携带或更新 Agent Note；修改函数行为后同步更新测试断言与本表。

@@ -107,6 +107,7 @@ await section('index.js · Host 分发', async () => {
   check('UI 不再请求 6. 子域', !r.body.includes("grab('6', 'v6')"));
   check('UI 含 IPv6 卡片派生逻辑', r.body.includes('当前连接为 IPv4，未获取到 IPv6'));
   check('UI 判定措辞严谨（IPv4 连接/无法判定）', r.body.includes('IPv4 连接') && r.body.includes('无法判定 IPv6 是否存在') && !r.body.includes('IPv4 访问优先'));
+  check('主页含 WebRTC 检查入口', r.body.includes('/webrtc'));
 
   // 无 eo 时回退 X-Forwarded-For
   r = await call(indexMod, '4.ip.example.com', '/', { headers: { 'x-forwarded-for': '203.0.113.7, 10.0.0.1' } });
@@ -146,6 +147,11 @@ await section('[[default]].js · 路径端点', async () => {
 
   r = await call(catchAllMod, 'ip.example.com', '/favicon.ico', { eo: eo4 });
   check('/favicon.ico → 204', r.res.status === 204);
+
+  r = await call(catchAllMod, 'ip.example.com', '/webrtc', { eo: eo4 });
+  check('/webrtc 返回检查页 HTML', r.res.status === 200 && (r.res.headers.get('content-type') || '').includes('text/html') && r.body.includes('WebRTC'));
+  check('/webrtc 页面含浏览器端检测逻辑', r.body.includes('RTCPeerConnection') && r.body.includes('onicecandidate') && r.body.includes('stun:stun.miwifi.com'));
+  check('/webrtc 页面不含服务端 IP 注入（纯浏览器检测）', !r.body.includes('request.eo'));
 
   r = await call(catchAllMod, 'ip.example.com', '/nope', { eo: eo4 });
   check('未知路径 → 404 JSON', r.res.status === 404);

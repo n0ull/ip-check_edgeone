@@ -159,6 +159,7 @@ function renderUi(family, base) {
   rows.push('.curl b{color:#c9d6f0;font-weight:600}');
   rows.push('.hint{display:none;margin-top:14px;padding:10px 12px;border-radius:8px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);color:#fbbf24;font-size:12.5px;line-height:1.7}');
   rows.push('.foot{margin-top:18px;font-size:12px;color:#5b6b8c;text-align:center}');
+  rows.push('.foot a{color:#7aa5ff;text-decoration:none}');
   rows.push('@media (max-width:520px){.ip{font-size:17px}}');
   rows.push('</style>');
   rows.push('</head>');
@@ -175,7 +176,7 @@ function renderUi(family, base) {
   rows.push('  curl <b>test.__BASE__</b> → 返回本次连接 IP（IPv6 即 IPv6 访问优先）');
   rows.push('  </div>');
   rows.push('<div class="hint" id="hint">提示：当前为同源回退结果（未绑定自定义域名）。绑定自定义域名（全 CNAME，4. 站点关闭 IPv6 访问）后，4. 必返 IPv4，test. 返回本次连接 IP。</div>');
-  rows.push('<div class="foot">Powered by EdgeOne</div>');
+  rows.push('<div class="foot"><a href="/webrtc">WebRTC 检查</a> · Powered by EdgeOne</div>');
   rows.push('</div>');
   rows.push('<script>');
   rows.push("  var BASE = '__BASE__';");
