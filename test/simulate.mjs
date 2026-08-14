@@ -1,0 +1,155 @@
+/**
+ * 本地逻辑验证脚本（无需 EdgeOne 环境，Node 18+ 直接运行：npm test）
+ * 模拟 EdgeOne 边缘运行时：构造 Request（可携带 request.eo），调用 onRequest(context) 并断言结果。
+ */
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const root = path.join(here, '..');
+
+// 校验待测文件存在（作为入口文件被 Makers 构建器识别）
+for (const f of ['index.js', '[[default]].js']) {
+  const p = path.join(root, 'edge-functions', f);
+  if (!readFileSync(p, 'utf8').includes('export async function onRequest')) {
+    console.error('✘ ' + f + ' 未导出 onRequest');
+    process.exit(1);
+  }
+}
+
+const indexMod = await import(pathToFileURL(path.join(root, 'edge-functions', 'index.js')).href);
+const catchAllMod = await import(pathToFileURL(path.join(root, 'edge-functions', '[[default]].js')).href);
+
+let passed = 0;
+let failed = 0;
+
+function check(name, cond, detail) {
+  if (cond) { passed++; console.log('  ✔ ' + name); }
+  else { failed++; console.log('  ✘ ' + name + (detail ? ' — ' + detail : '')); }
+}
+
+function makeRequest(host, pathname, opts) {
+  const req = new Request('https://' + host + (pathname || '/'), {
+    method: 'GET',
+    headers: opts && opts.headers ? opts.headers : {},
+  });
+  if (opts && opts.eo) {
+    Object.defineProperty(req, 'eo', { value: opts.eo, enumerable: true });
+  }
+  return req;
+}
+
+async function call(mod, host, pathname, opts) {
+  const request = makeRequest(host, pathname, opts);
+  const res = await mod.onRequest({ request, params: {}, env: {}, waitUntil: () => {} });
+  const body = await res.text();
+  return { res, body };
+}
+
+async function section(title, fn) {
+  console.log('\n== ' + title + ' ==');
+  await fn();
+}
+
+// ---------- index.js：Host 子域名分发 ----------
+await section('index.js · Host 分发', async () => {
+  const eo4 = { clientIp: '1.2.3.4', geo: {} };
+  const eo6 = { clientIp: '240e:390:abcd:1234::1', geo: {} };
+
+  // 4.ip.<domain> → IPv4 纯文本
+  let r = await call(indexMod, '4.ip.example.com', '/', { eo: eo4 });
+  check('4. 返回 IPv4 纯文本', r.res.status === 200 && r.body.trim() === '1.2.3.4', 'body=' + JSON.stringify(r.body));
+  check('4. 响应头 x-ip-family=IPv4', r.res.headers.get('x-ip-family') === 'IPv4');
+  check('4. 响应头 CORS', r.res.headers.get('access-control-allow-origin') === '*');
+  check('4. 响应头 no-store', (r.res.headers.get('cache-control') || '').includes('no-store'));
+
+  // 4.ip.<domain> + IPv6 连接 → 400 提示
+  r = await call(indexMod, '4.ip.example.com', '/', { eo: eo6 });
+  check('4. IPv6 连接时返回 400 与提示', r.res.status === 400 && r.body.includes('IPv4'), 'body=' + JSON.stringify(r.body.slice(0, 60)));
+
+  // 6.ip.<domain> → IPv6 纯文本
+  r = await call(indexMod, '6.ip.example.com', '/', { eo: eo6 });
+  check('6. 返回 IPv6 纯文本', r.res.status === 200 && r.body.trim() === eo6.clientIp, 'body=' + JSON.stringify(r.body));
+
+  // 6.ip.<domain> + IPv4 连接 → 400 提示
+  r = await call(indexMod, '6.ip.example.com', '/', { eo: eo4 });
+  check('6. IPv4 连接时返回 400 与提示', r.res.status === 400 && r.body.includes('IPv6'), 'body=' + JSON.stringify(r.body.slice(0, 60)));
+
+  // test.ip.<domain> → 连接 IP（IPv6 ⇒ IPv6 优先）
+  r = await call(indexMod, 'test.ip.example.com', '/', { eo: eo6 });
+  check('test. IPv6 连接返回 IPv6 地址', r.res.status === 200 && r.body.trim() === eo6.clientIp);
+  check('test. x-ip-preferred=IPv6', r.res.headers.get('x-ip-preferred') === 'IPv6');
+  r = await call(indexMod, 'test.ip.example.com', '/', { eo: eo4 });
+  check('test. IPv4 连接返回 IPv4 地址', r.res.status === 200 && r.body.trim() === '1.2.3.4');
+  check('test. x-ip-preferred=IPv4', r.res.headers.get('x-ip-preferred') === 'IPv4');
+
+  // test. 支持 ?format=json
+  r = await call(indexMod, 'test.ip.example.com', '/?format=json', { eo: eo6 });
+  let j = null; try { j = JSON.parse(r.body); } catch (_) {}
+  check('test. ?format=json 输出 JSON', !!j && j.ip === eo6.clientIp && j.ipv6Preferred === true, 'body=' + JSON.stringify(r.body.slice(0, 80)));
+  r = await call(indexMod, 'test.ip.example.com', '/?format=json', { eo: eo4 });
+  j = null; try { j = JSON.parse(r.body); } catch (_) {}
+  check('test. IPv4 连接 JSON 不含 ipv6Preferred（无法判定）', !!j && j.family === 'IPv4' && !('ipv6Preferred' in j), 'body=' + JSON.stringify(r.body.slice(0, 120)));
+
+  // ip.<domain> → UI
+  r = await call(indexMod, 'ip.example.com', '/', { eo: eo4 });
+  check('ip. 返回 HTML UI', r.res.status === 200 && (r.res.headers.get('content-type') || '').includes('text/html') && r.body.includes('IP 查询'), 'ct=' + r.res.headers.get('content-type'));
+  check('UI 极简结构（三字段，无本页连接行）', r.body.includes('IPv4 地址') && r.body.includes('IPv6 地址') && r.body.includes('双栈测试') && !r.body.includes('本页连接'));
+  check('UI 字段垂直堆叠布局（label 上、值下）', r.body.includes('class="field"') && r.body.includes('class="lbl"'));
+  check('UI 去除装饰（无 emoji 标题与卡片）', !r.body.includes('🌐') && !r.body.includes('class="card"'));
+  check('UI 注入 BASE 域名', r.body.includes('ip.example.com'));
+  check('UI 服务端即时判定（IPv4 连接，非“优先”）', r.body.includes('IPv4 连接') && !r.body.includes('IPv4 访问优先'));
+  check('UI 含同源回退逻辑', r.body.includes('looksLikeIp') && r.body.includes("fetch('/' + sub,"));
+  check('UI 含提示条元素', r.body.includes('id=\"hint\"'));
+  check('UI 注入 v4/test 抓取逻辑', r.body.includes("grab('4', 'v4')") && r.body.includes("grab('test', 'test')"));
+  check('UI 不再请求 6. 子域', !r.body.includes("grab('6', 'v6')"));
+  check('UI 含 IPv6 卡片派生逻辑', r.body.includes('当前连接为 IPv4，未获取到 IPv6'));
+  check('UI 判定措辞严谨（IPv4 连接/无法判定）', r.body.includes('IPv4 连接') && r.body.includes('无法判定 IPv6 是否存在') && !r.body.includes('IPv4 访问优先'));
+
+  // 无 eo 时回退 X-Forwarded-For
+  r = await call(indexMod, '4.ip.example.com', '/', { headers: { 'x-forwarded-for': '203.0.113.7, 10.0.0.1' } });
+  check('无 eo 时回退 X-Forwarded-For', r.body.trim() === '203.0.113.7', 'body=' + JSON.stringify(r.body));
+
+  // 无任何 IP 信息
+  r = await call(indexMod, '4.ip.example.com', '/', {});
+  check('无 IP 信息时返回 400', r.res.status === 400);
+
+  // 生产环境（存在 eo 对象）：即使 clientIp 缺失，也忽略可伪造的 X-Forwarded-For
+  r = await call(indexMod, '4.ip.example.com', '/', { eo: { clientIp: '', geo: {} }, headers: { 'x-forwarded-for': '203.0.113.9' } });
+  check('生产环境忽略伪造代理头', r.res.status === 400, 'status=' + r.res.status);
+});
+
+// ---------- [[default]].js：路径端点 ----------
+await section('[[default]].js · 路径端点', async () => {
+  const eo4 = { clientIp: '8.8.8.8', geo: {} };
+  const eo6 = { clientIp: '2001:db8::1', geo: {} };
+
+  let r = await call(catchAllMod, 'ip.example.com', '/4', { eo: eo4 });
+  check('/4 返回 IPv4', r.res.status === 200 && r.body.trim() === '8.8.8.8');
+  r = await call(catchAllMod, 'ip.example.com', '/api/v4', { eo: eo4 });
+  check('/api/v4 返回 IPv4', r.res.status === 200 && r.body.trim() === '8.8.8.8');
+  r = await call(catchAllMod, 'ip.example.com', '/api/v4?format=json', { eo: eo4 });
+  let j = null; try { j = JSON.parse(r.body); } catch (_) {}
+  check('/api/v4?format=json 输出 JSON', !!j && j.ip === '8.8.8.8' && j.family === 'IPv4');
+
+  r = await call(catchAllMod, 'ip.example.com', '/6', { eo: eo6 });
+  check('/6 返回 IPv6', r.res.status === 200 && r.body.trim() === '2001:db8::1');
+
+  r = await call(catchAllMod, 'ip.example.com', '/test', { eo: eo6 });
+  check('/test 返回连接 IP', r.res.status === 200 && r.body.trim() === '2001:db8::1');
+
+  r = await call(catchAllMod, 'ip.example.com', '/api/self', { eo: eo4 });
+  j = null; try { j = JSON.parse(r.body); } catch (_) {}
+  check('/api/self 输出 JSON', !!j && j.ip === '8.8.8.8' && j.family === 'IPv4');
+
+  r = await call(catchAllMod, 'ip.example.com', '/favicon.ico', { eo: eo4 });
+  check('/favicon.ico → 204', r.res.status === 204);
+
+  r = await call(catchAllMod, 'ip.example.com', '/nope', { eo: eo4 });
+  check('未知路径 → 404 JSON', r.res.status === 404);
+});
+
+console.log('\n结果: ' + passed + ' 通过, ' + failed + ' 失败');
+process.exit(failed === 0 ? 0 : 1);

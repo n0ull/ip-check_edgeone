@@ -1,0 +1,4 @@
+interface:
+  display_name: "IP 查询服务工作流"
+  short_description: "开发、验证、部署与排查 IP 查询服务（EdgeOne Makers）"
+  default_prompt: "Use $ip-service-workflow when developing, deploying, or debugging the EdgeOne Makers IP lookup service."
