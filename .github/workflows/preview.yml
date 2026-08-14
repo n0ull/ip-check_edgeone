@@ -1,0 +1,40 @@
+name: Deploy Preview
+
+# 打开 PR 时部署预览环境，并在评论区附上预览链接
+on:
+  pull_request_target:
+    types: [opened]
+
+jobs:
+  deploy-preview:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.11.0'
+
+      - name: Deploy preview to EdgeOne Makers
+        id: deploy
+        run: |
+          DEPLOY_JSON=$(npx edgeone makers deploy -n ip-check -a overseas -e preview -t "${{ secrets.EDGEONE_API_TOKEN }}" --json 2>/dev/null | tail -1)
+          DEPLOY_URL=$(echo "$DEPLOY_JSON" | python3 -c "import sys,json;print(json.load(sys.stdin).get('url',''))")
+          PROJECT_ID=$(echo "$DEPLOY_JSON" | python3 -c "import sys,json;print(json.load(sys.stdin).get('projectId',''))")
+          echo "DEPLOY_URL=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
+          echo "PROJECT_ID=$PROJECT_ID" >> "$GITHUB_OUTPUT"
+        env:
+          EDGEONE_API_TOKEN: ${{ secrets.EDGEONE_API_TOKEN }}
+
+      - name: Comment preview link on PR
+        uses: thollander/actions-comment-pull-request@v2
+        with:
+          message: |
+            🚀 **EdgeOne Makers 预览部署完成**
+
+            | 项目 | 预览链接 | 项目 ID |
+            |---|---|---|
+            | ip-check | [🔗 点击预览](${{ steps.deploy.outputs.DEPLOY_URL }}) | ${{ steps.deploy.outputs.PROJECT_ID }} |

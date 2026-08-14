@@ -1,5 +1,8 @@
 # IP 查询服务（EdgeOne Makers · Edge Functions）
 
+[![使用 EdgeOne Makers 部署](https://cdnstatic.tencentcs.com/edgeone/pages/deploy.svg)](https://console.cloud.tencent.com/edgeone/makers/new?repository-url=https%3A%2F%2Fgithub.com%2Fn0ull%2Fip-check_edgeone&project-name=ip-check)
+
+> 一键部署按钮：指向仓库 [n0ull/ip-check_edgeone](https://github.com/n0ull/ip-check_edgeone)，点击后以该仓库为部署源在 Makers 创建项目。其他仓库可自行替换链接中的 `repository-url`（`encodeURIComponent` 编码），见[部署按钮文档](https://cloud.tencent.com/document/product/1552/127397)。
 基于腾讯云 [EdgeOne Makers](https://cloud.tencent.com/document/product/1552/127423)（原 EdgeOne Pages）的
 **Edge Functions（边缘函数）** 实现的轻量 IP 查询服务，无后端、无数据库、免费额度即可运行：
 
@@ -133,7 +136,7 @@ edgeone makers deploy -n ip-check -e preview -a overseas   # 预览环境
 
 ```bash
 git init && git add . && git commit -m "init ip-check"
-git remote add origin <你的仓库地址>
+git remote add origin https://github.com/n0ull/ip-check_edgeone.git
 git push -u origin main      # Makers 控制台关联仓库后自动构建部署
 ```
 
@@ -144,6 +147,25 @@ edgeone makers deploy ./dist -n ip-check -a overseas -t $EDGEONE_API_TOKEN
 ```
 
 API Token 在 Makers 控制台生成（文档：[API Token](https://cloud.tencent.com/document/product/1552/127422)）。
+
+### 方式 D：GitHub Actions 自动部署
+
+仓库已包含两个工作流（参考[使用 GitHub Action](https://cloud.tencent.com/document/product/1552/127398)）：
+
+- `.github/workflows/deploy.yml` —— 向 `main` 推送代码时自动部署**生产环境**；
+- `.github/workflows/preview.yml` —— 打开 Pull Request 时部署**预览环境**，并在 PR 评论区附上预览链接。
+
+前置条件：在 GitHub 仓库的 Settings → Secrets and variables → Actions 中添加 secret：`EDGEONE_API_TOKEN`（值为 Makers 控制台生成的 API Token）。
+
+```yaml
+# 工作流核心命令（生产）
+npx edgeone makers deploy -n ip-check -a overseas -t ${{ secrets.EDGEONE_API_TOKEN }}
+
+# 工作流核心命令（预览 + 机器可读输出）
+npx edgeone makers deploy -n ip-check -a overseas -e preview -t ${{ secrets.EDGEONE_API_TOKEN }} --json
+```
+
+注意：`-a overseas` 必须携带（区域参数不持久化，漏带会回退 global）；本项目无构建步骤，工作流不执行 `npm run build`，由 CLI 直接构建上传当前目录。
 
 ## 五、域名与 DNS 配置（关键步骤）
 
@@ -230,7 +252,7 @@ open https://ip.example.com/          # 网页：同时展示 IPv4 / IPv6 / IPv6
 
 - **[AGENTS.md](AGENTS.md)** —— 站立命令：代理每次会话都需要的规则（三域名定案、IP 契约、部署参数、措辞纪律），每条一行并链接依据。
 - **[.agents/notes/](.agents/notes/README.md)** —— Agent Note 决策记录。路径格式为 `notes/{生命周期}/{分类}/yyyy-mm-dd-主题.md`，统一格式为 `# Agent Note:` + `Status:` + `Problem`/`Decision`/`Alternatives considered`/`Consequences`，由 `npm run verify:notes` 机械校验。
-  已记录五篇决策：平台约束、IP 契约、UI 回退、语义措辞、部署管理。`implemented/` 与 `archived/` 目录各有 AGENTS.md 定义维护边界与冻结规则。`skills/` 下为可复用工作流 [ip-service-workflow](.agents/skills/ip-service-workflow/SKILL.md)。
+  已记录六篇决策：平台约束、IP 契约、UI 回退、语义措辞、部署管理、GitHub Actions 自动部署。`implemented/` 与 `archived/` 目录各有 AGENTS.md 定义维护边界与冻结规则。`skills/` 下为可复用工作流 [ip-service-workflow](.agents/skills/ip-service-workflow/SKILL.md)。
 - **本文档** —— 部署参考手册：端到端操作步骤、DNS/站点配置表、端点与验证命令，不承载决策史。
 
 规则：非平凡变更（行为、架构、契约、流程、测试策略、配置格式）必须同变更携带或更新 Agent Note；修改函数行为后同步更新测试断言与本表。
