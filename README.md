@@ -2,7 +2,7 @@
 
 [![使用 EdgeOne Makers 部署](https://cdnstatic.tencentcs.com/edgeone/pages/deploy.svg)](https://console.cloud.tencent.com/edgeone/makers/new?repository-url=https%3A%2F%2Fgithub.com%2Fn0ull%2Fip-check_edgeone&project-name=ip-check)
 
-> 一键部署按钮：指向仓库 [n0ull/ip-check_edgeone](https://github.com/n0ull/ip-check_edgeone)，点击后以该仓库为部署源在 Makers 创建项目。其他仓库可自行替换链接中的 `repository-url`（`encodeURIComponent` 编码），见[部署按钮文档](https://cloud.tencent.com/document/product/1552/127397)。
+> 点击上方按钮以本仓库为部署源创建 Makers 项目（其他仓库替换链接中的 `repository-url` 即可，见[部署按钮文档](https://cloud.tencent.com/document/product/1552/127397)）。
 
 基于腾讯云 [EdgeOne Makers](https://cloud.tencent.com/document/product/1552/127423)（原 EdgeOne Pages）的 **Edge Functions（边缘函数）** 实现的轻量 IP 查询服务，无后端、无数据库、免费额度即可运行：
 
@@ -14,22 +14,9 @@
 
 ## 工作原理
 
-```text
-                        ┌──────────────────────────────┐
- curl 4.ip.example.com │ EdgeOne 全球边缘节点           │
- curl test.ip...       │  ├─ Edge Functions (index.js)  │
- 浏览器 ip.example.com │  │   按 Host 子域名分发：       │
-                        │  │   4.   → 返回 IPv4           │
-                        │  │   test → 返回连接 IP（IPv6  │
-                        │  │          即 IPv6 访问优先） │
-                        │  │   ip.  → 返回查询网页        │
-                        │  └──────────────────────────────┘
-                        └──────────────────────────────┘
-客户端 IP 由边缘节点通过 request.eo.clientIp 注入，不依赖任何第三方服务。
-```
+客户端 IP 由边缘节点通过 `request.eo.clientIp` 注入，不依赖任何第三方服务。
 
-**`4.` 如何强制 IPv4**：EdgeOne 自定义域名只提供 **CNAME** 解析，Makers 控制台支持对每个站点（自定义域名）单独设置 IPv6 访问——开关只有『关（仅 IPv4）』与『开（双栈）』两个状态，**不存在『仅 IPv6』**。 `4.` 站点关闭 IPv6 后，平台不再提供该域名的 IPv6 接入，双栈客户端（Happy Eyeballs）自动回退 IPv4 连接，函数必然看到 IPv4 源地址。
-同理平台无法强制仅 IPv6，故**不提供 `6.` 子域**（行为与 `test.` 重复），IPv6 地址由 `test.` 的双栈结果派生。决策记录见[架构笔记](.agents/notes/implemented/architecture/2026-08-14-platform-constraints-and-three-domain-design.md)。
+**`4.` 如何强制 IPv4**：Makers 控制台支持对每个站点（自定义域名）单独设置 IPv6 访问，开关只有『关（仅 IPv4）』与『开（双栈）』两个状态。`4.` 站点关闭 IPv6 后，平台不再提供该域名的 IPv6 接入，双栈客户端（Happy Eyeballs）自动回退 IPv4 连接，函数必然看到 IPv4 源地址。IPv6 地址由 `test.` 的双栈结果派生（设计决策见[架构笔记](.agents/notes/implemented/architecture/2026-08-14-platform-constraints-and-three-domain-design.md)）。
 
 **网页抓取策略**：卡片优先请求 `4.`、`test.` 子域，IPv6 卡片由双栈测试结果派生；未绑定自定义域名时自动回退到 `/4`、`/test` 路径端点并显示提示条，绑定后自动切换为精确结果。
 
@@ -56,13 +43,13 @@ ip-check/
         └── dom-sandbox.mjs # 两个 DOM 沙箱测试共享的 mock/vm 助手
 ```
 
-本项目是**完整的可部署项目**：`ip-check` 已存在于 Makers 控制台，本目录即项目根，无需执行 `create`/`init`。目录结构参考官方模板 [functions-fetch](https://github.com/TencentEdgeOne/pages-templates)（纯 Edge Functions + 静态托管），去掉了框架部分。
+本项目是**完整的可部署项目**：本目录即项目根，无需执行 `create`/`init`。
 
 ## 一、部署前准备
 
 1. 腾讯云账号并完成实名认证，在 [EdgeOne Makers 控制台](https://console.cloud.tencent.com/edgeone/makers) 一键开通（免费版即可）；
 2. 一个域名（本项目部署在『全球可用区（不含中国大陆）』，**无需 ICP 备案**）；
-3. Node.js 18+，安装并登录 CLI：
+3. Node.js 18+；本地调试或冒烟部署需 CLI：
 
 ```bash
 npm install -g edgeone
@@ -84,16 +71,16 @@ edgeone makers dev
 npm test
 ```
 
-> `npm test` 一次跑完全部本地门禁（逻辑断言、双页 DOM 沙箱、双文件内联一致性、Agent Note 格式等；构成以 `package.json` 的 `test` script 为权威）。
-> 仓库内置 pre-commit 钩子（`.githooks/pre-commit`）：`npm install` 时自动执行 `git config core.hooksPath .githooks` 启用，提交前自动执行语法检查与 `npm test`；未跑过 `npm install` 可手工执行该命令。
+> `npm test` 一次跑完全部本地门禁（逻辑断言、双页 DOM 沙箱、Agent Note 格式等；构成以 `package.json` 的 `test` script 为权威）。
+> pre-commit 钩子随 `npm install` 自动启用（`core.hooksPath=.githooks`），提交前自动执行语法检查与 `npm test`。
 
 ## 三、部署
 
 ### 生产部署：推送即发布（控制台 Git 集成）
 
-项目 `ip-check` 为 GitHub Provider（经上方一键部署按钮以仓库为源创建）：**推送 main 即触发平台侧构建与生产发布**，构建日志在 Makers 控制台查看，仓库内无需任何 CI 工作流。
+项目 `ip-check` 为 GitHub Provider（经上方一键部署按钮以仓库为源创建）：**推送 main 即触发平台侧构建与生产发布**，构建日志在 Makers 控制台查看。
 
-> ⚠️ **Provider 约束**：GitHub Provider 的项目不支持 CLI/Actions 直传（`edgeone makers deploy` 会报 `Project ip-check exists but has Provider 'Github'`）。本仓库曾内置的 Actions 工作流因此全部失败，已移除（见[部署路径修正笔记](.agents/notes/implemented/process/2026-08-27-actions-removed-console-git-integration.md)）。
+> ⚠️ **Provider 约束**：GitHub Provider 的项目（如本项目）不支持 CLI 直传，`edgeone makers deploy` 会报 Provider 冲突；CLI 直传仅适用于 Upload Provider 项目（见下节）。
 
 ### 本地 CLI 直传（仅限 Upload Provider 项目，如临时冒烟）
 
@@ -171,16 +158,14 @@ curl "https://test.ip.example.com/?format=json"   # JSON：{"ip":"...","family":
 
 - **换域名？** 函数按 Host 自动识别子域名，只需改 DNS 记录，无需改代码。
 - **需要备案吗？** 本项目在『全球可用区（不含中国大陆）』，绑定自定义域名**无需 ICP 备案**；如将来改回含中国大陆区域则需备案。
-- **不想要 Makers/CLI，可以用控制台版边缘函数吗？** 可以。在 EdgeOne 控制台创建边缘函数，添加 3 条触发规则分别绑定 `4.ip.<域名>/*`、`test.ip.<域名>/*`、`ip.<域名>/*`，函数体用 `addEventListener('fetch')` 形式读取 `request.eo.clientIp`，逻辑与本项目一致；同样无法强制仅 IPv6，故无 `6.` 子域。
+- **不想用 Makers CLI？** 也可在控制台创建边缘函数：3 条触发规则分别绑定三个子域，函数读取 `request.eo.clientIp`，逻辑与本项目一致。
 
 ## 文档体系
 
 - **[AGENTS.md](AGENTS.md)** —— 站立命令（每会话必读规则）；**[.agents/notes/](.agents/notes/README.md)** —— 决策记录（Agent Note，`npm run verify:notes` 机械校验）；**本文档** —— 部署手册，不承载决策史。
 - 规则：非平凡变更（行为、架构、契约、流程、测试策略、配置格式）必须同变更携带或更新 Agent Note；修改函数行为后同步更新测试断言与上方端点表。
+- **边界**：本文档只写「是什么、怎么用、怎么部署」；「为什么不提供 X」「曾经如何」等决策史与辩护性内容一律进 Agent Note，README 至多留指针链接（见[内容边界笔记](.agents/notes/implemented/process/2026-08-27-readme-content-boundary.md)）。
 
 ## 参考文档
 
-- [EdgeOne CLI](https://cloud.tencent.com/document/product/1552/127423) · [Makers Functions 概览](https://cloud.tencent.com/document/product/1552/127415) · [Edge Functions](https://cloud.tencent.com/document/product/1552/127416) · [Cloud Functions · Node.js](https://cloud.tencent.com/document/product/1552/127419)
-- [获取客户端 IP（示例）](https://cloud.tencent.com/document/product/1552/101774) · [edgeone.json 配置](https://cloud.tencent.com/document/product/1552/127389) · [限制与配额](https://cloud.tencent.com/document/product/1552/132789)
-- [自定义域名](https://cloud.tencent.com/document/product/1552/127404) · [CNAME 配置](https://cloud.tencent.com/document/product/1552/127409) · [使用 GitHub Action](https://cloud.tencent.com/document/product/1552/127398) · [部署按钮](https://cloud.tencent.com/document/product/1552/127397)
-- 官方模板：[TencentEdgeOne/pages-templates](https://github.com/TencentEdgeOne/pages-templates)
+- [EdgeOne CLI](https://cloud.tencent.com/document/product/1552/127423) · [Edge Functions](https://cloud.tencent.com/document/product/1552/127416) · [自定义域名](https://cloud.tencent.com/document/product/1552/127404) · [部署按钮](https://cloud.tencent.com/document/product/1552/127397)
