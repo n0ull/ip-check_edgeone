@@ -69,14 +69,6 @@ await section('index.js · Host 分发', async () => {
   r = await call(indexMod, '4.ip.example.com', '/', { eo: eo6 });
   check('4. IPv6 连接时返回 400 与提示', r.res.status === 400 && r.body.includes('IPv4'), 'body=' + JSON.stringify(r.body.slice(0, 60)));
 
-  // 6.ip.<domain> → IPv6 纯文本
-  r = await call(indexMod, '6.ip.example.com', '/', { eo: eo6 });
-  check('6. 返回 IPv6 纯文本', r.res.status === 200 && r.body.trim() === eo6.clientIp, 'body=' + JSON.stringify(r.body));
-
-  // 6.ip.<domain> + IPv4 连接 → 400 提示
-  r = await call(indexMod, '6.ip.example.com', '/', { eo: eo4 });
-  check('6. IPv4 连接时返回 400 与提示', r.res.status === 400 && r.body.includes('IPv6'), 'body=' + JSON.stringify(r.body.slice(0, 60)));
-
   // test.ip.<domain> → 连接 IP（IPv6 ⇒ IPv6 优先）
   r = await call(indexMod, 'test.ip.example.com', '/', { eo: eo6 });
   check('test. IPv6 连接返回 IPv6 地址', r.res.status === 200 && r.body.trim() === eo6.clientIp);
@@ -142,9 +134,6 @@ await section('[[default]].js · 路径端点', async () => {
 
   r = await call(catchAllMod, 'ip.example.com', '/4', { eo: eo4, method: 'POST' });
   check('POST /4 → 405 + Allow', r.res.status === 405 && (r.res.headers.get('allow') || '').includes('GET'));
-
-  r = await call(catchAllMod, 'ip.example.com', '/6', { eo: eo6 });
-  check('/6 返回 IPv6', r.res.status === 200 && r.body.trim() === '2001:db8::1');
 
   r = await call(catchAllMod, 'ip.example.com', '/test', { eo: eo6 });
   check('/test 返回连接 IP', r.res.status === 200 && r.body.trim() === '2001:db8::1');

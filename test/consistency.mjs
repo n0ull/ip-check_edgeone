@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(here, '..');
 const FILES = ['index.js', '[[default]].js'];
-const SHARED = ['isIpv4', 'isIpv6', 'getClientIp', 'baseHeaders', 'textResponse', 'jsonResponse', 'wantsJson', 'handleV4', 'handleV6', 'handleTest'];
+const SHARED = ['isIpv4', 'isIpv6', 'getClientIp', 'baseHeaders', 'textResponse', 'jsonResponse', 'wantsJson', 'handleV4', 'handleTest'];
 
 let passed = 0, failed = 0;
 const check = (name, cond, detail) => {

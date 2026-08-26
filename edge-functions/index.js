@@ -6,11 +6,11 @@
  *   4.ip.<domain>    → 直接返回访问者 IPv4（纯文本；站点关闭 IPv6 后仅 IPv4 可达）
  *   test.ip.<domain> → 返回本次连接实际使用的 IP：IPv6 即 IPv6 访问优先，且该地址即访问者的 IPv6
  *
- * 其余路径由 [[default]].js 处理（/4 /6 /test 等路径式端点）。
- * 注：不再提供 6.ip.<domain>（平台无法强制仅 IPv6，与 test. 语义重复）；Host 分发中 case '6' 仅为兼容保留。
+ * 其余路径由 [[default]].js 处理（/4 /test 等路径式端点）。
+ * 注：不提供 6.ip.<domain>（平台无法强制仅 IPv6，与 test. 语义重复，兼容面已移除）。
  */
 
-const SUBDOMAINS = ['4', '6', 'test'];
+const SUBDOMAINS = ['4', 'test'];
 
 function isIpv4(ip) {
   return typeof ip === 'string' && /^(\d{1,3}\.){3}\d{1,3}$/.test(ip);
@@ -101,19 +101,6 @@ function handleV4(request, ip) {
   }
   if (wantsJson(request)) return jsonResponse({ ip, family: 'IPv4', service: 'edgeone-ip' });
   return textResponse(ip + '\n', 200, { 'x-ip-family': 'IPv4' });
-}
-
-function handleV6(request, ip) {
-  if (!ip) return textResponse('无法获取客户端 IP 地址。\n', 400);
-  if (isIpv4(ip)) {
-    return textResponse(
-      '当前通过 IPv4 连接，无法获取您的 IPv6 地址。\n' +
-      '请通过支持 IPv6 的网络访问 6.<domain>（该域名为双栈，IPv6 客户端自动优先走 IPv6），或改用 test 端点。\n',
-      400
-    );
-  }
-  if (wantsJson(request)) return jsonResponse({ ip, family: 'IPv6', service: 'edgeone-ip' });
-  return textResponse(ip + '\n', 200, { 'x-ip-family': 'IPv6' });
 }
 
 function handleTest(request, ip) {
@@ -284,9 +271,6 @@ export async function onRequest(context) {
   switch (info.sub) {
     case '4':
       return handleV4(request, ip);
-    case '6':
-      // 兼容保留：平台站点开关无法强制“仅 IPv6”，6. 与 test. 语义重复，建议不再绑定该子域
-      return handleV6(request, ip);
     case 'test':
       return handleTest(request, ip);
     default:

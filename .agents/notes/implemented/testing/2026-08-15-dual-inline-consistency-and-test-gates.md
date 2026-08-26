@@ -9,7 +9,7 @@ Status: implemented
 
 ## Decision
 
-- 新增 `test/consistency.mjs`：从两个函数文件提取 10 个共享函数（`isIpv4`/`isIpv6`/`getClientIp`/`baseHeaders`/`textResponse`/`jsonResponse`/`wantsJson`/`handleV4`/`handleV6`/`handleTest`）的源码（按花括号配对提取，约束为函数体内字符串/正则中的花括号成对出现），仅归一化行尾差异后逐字比对；配套把 `handleV4`/`handleV6` 的漂移文案统一为详细版；
+- 新增 `test/consistency.mjs`：从两个函数文件提取 9 个共享函数（`isIpv4`/`isIpv6`/`getClientIp`/`baseHeaders`/`textResponse`/`jsonResponse`/`wantsJson`/`handleV4`/`handleTest`；`handleV6` 已随[移除 6. 兼容面](../simplification/2026-08-26-remove-v6-compat-surface.md)删除）的源码（按花括号配对提取，约束为函数体内字符串/正则中的花括号成对出现），仅归一化行尾差异后逐字比对；配套把 `handleV4`/`handleV6` 的漂移文案统一为详细版；
 - `test/simulate.mjs` 补充 `Accept: application/json` 协商断言与两个 405 方法门禁断言（主页 UI 的 `new Function` 语法冒烟断言已随[浏览器脚本即真实函数](../simplification/2026-08-26-browser-js-as-real-functions.md)退役——脚本改为真实函数后，语法由模块 import 与 `node --check` 直接保证）；
 - `npm test` 串起全部本地验证：`simulate.mjs` → `ui-dom.mjs` → `webrtc-dom.mjs` → `consistency.mjs` → `verify-agent-notes.mjs`（`ui-dom.mjs` 后增，见[浏览器脚本即真实函数](../simplification/2026-08-26-browser-js-as-real-functions.md)），一个命令即完整门禁，同时挂入 pre-commit 钩子（见[提交前预检笔记](../process/2026-08-15-pre-commit-gate.md)）。
 

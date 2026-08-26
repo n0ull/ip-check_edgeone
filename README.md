@@ -41,7 +41,7 @@ ip-check/
 ├── package.json
 ├── edge-functions/
 │   ├── index.js            # 匹配 "/"：查询网页 + 按 Host 分发 4./test.
-│   └── [[default]].js      # 匹配其余路径：/4 /6 /test /api/* 等路径式端点
+│   └── [[default]].js      # 匹配其余路径：/4 /test /api/* 等路径式端点
 ├── .githooks/
 │   └── pre-commit          # 提交前预检（npm install 自动启用，见「二、本地调试」）
 ├── scripts/
@@ -76,7 +76,7 @@ npm install        # 可选：无第三方依赖，但会自动启用 pre-commit
 edgeone makers dev
 ```
 
-本地服务默认运行在 **8088** 端口：`/` → 查询网页，`/4` `/6` `/test` → 路径式端点（本地无 `request.eo`，回退读取 `X-Forwarded-For`）。
+本地服务默认运行在 **8088** 端口：`/` → 查询网页，`/4` `/test` → 路径式端点（本地无 `request.eo`，回退读取 `X-Forwarded-For`）。
 
 也可以先运行纯逻辑验证（无需任何环境）：
 
@@ -158,7 +158,6 @@ curl "https://test.ip.example.com/?format=json"   # JSON：{"ip":"...","family":
 | `https://4.ip.<域名>/` | 纯文本 IPv4 | 站点关闭 IPv6 访问后仅 IPv4 可达，必返 IPv4 |
 | `https://test.ip.<域名>/` | 纯文本连接 IP | IPv6 即 IPv6 访问优先 |
 | `https://ip.<域名>/4` | 纯文本 IPv4 | 路径式（本地调试用） |
-| `https://ip.<域名>/6` | 纯文本 IPv6 | 路径式；仅 IPv6 连接时返回（尽力而为，同源调试用） |
 | `https://ip.<域名>/test` | 纯文本连接 IP | 路径式（本地调试用） |
 | `https://ip.<域名>/api/self` | JSON | `{"ip": "...", "family": "IPv4\|IPv6"}` |
 | `https://ip.<域名>/webrtc` | HTML 检查页 | WebRTC 公网/局域网 IP 检测与泄漏判定（浏览器端） |

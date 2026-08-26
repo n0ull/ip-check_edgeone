@@ -4,7 +4,6 @@
  * 本文件匹配除 "/" 之外的所有路径（[[default]] 不匹配根路径，根路径由 index.js 处理）。
  * 提供路径式端点，便于本地调试（edgeone makers dev）与习惯用法：
  *   /4  /api/4  /api/v4  → 返回访问者 IPv4（纯文本）
- *   /6  /api/6  /api/v6  → 返回访问者 IPv6（纯文本）
  *   /test /api/test       → 返回本次连接实际使用的 IP（IPv6 即 IPv6 访问优先）
  *   /api/self             → 返回本次请求的 IP 与协议族（JSON）
  *
@@ -84,19 +83,6 @@ function handleV4(request, ip) {
   }
   if (wantsJson(request)) return jsonResponse({ ip, family: 'IPv4', service: 'edgeone-ip' });
   return textResponse(ip + '\n', 200, { 'x-ip-family': 'IPv4' });
-}
-
-function handleV6(request, ip) {
-  if (!ip) return textResponse('无法获取客户端 IP 地址。\n', 400);
-  if (isIpv4(ip)) {
-    return textResponse(
-      '当前通过 IPv4 连接，无法获取您的 IPv6 地址。\n' +
-      '请通过支持 IPv6 的网络访问 6.<domain>（该域名为双栈，IPv6 客户端自动优先走 IPv6），或改用 test 端点。\n',
-      400
-    );
-  }
-  if (wantsJson(request)) return jsonResponse({ ip, family: 'IPv6', service: 'edgeone-ip' });
-  return textResponse(ip + '\n', 200, { 'x-ip-family': 'IPv6' });
 }
 
 function handleTest(request, ip) {
@@ -243,10 +229,6 @@ export async function onRequest(context) {
     case '/api/4':
     case '/api/v4':
       return handleV4(request, ip);
-    case '/6':
-    case '/api/6':
-    case '/api/v6':
-      return handleV6(request, ip);
     case '/test':
     case '/api/test':
       return handleTest(request, ip);
@@ -264,6 +246,6 @@ export async function onRequest(context) {
     case '/favicon.ico':
       return new Response(null, { status: 204, headers: baseHeaders() });
     default:
-      return jsonResponse({ error: 'not found', hint: '可用端点: /4 /6 /test /api/self' }, 404);
+      return jsonResponse({ error: 'not found', hint: '可用端点: /4 /test /api/self' }, 404);
   }
 }
