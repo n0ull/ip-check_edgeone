@@ -49,7 +49,10 @@ ip-check/
 │   └── install-hooks.mjs       # 启用 .githooks（npm prepare 触发）
 └── test/
     ├── simulate.mjs        # Host 分发与路径端点逻辑断言
-    ├── webrtc-dom.mjs      # WebRTC 页内嵌 JS 的 DOM 沙箱测试
+    ├── ui-dom.mjs          # 主页脚本（UI_SCRIPT）的 DOM 沙箱测试
+    ├── webrtc-dom.mjs      # WebRTC 页脚本（WEBRTC_SCRIPT）的 DOM 沙箱测试
+    ├── helpers/
+    │   └── dom-sandbox.mjs # 两个 DOM 沙箱测试共享的 mock/vm 助手
     └── consistency.mjs     # 双文件内联函数一致性校验
 ```
 
@@ -81,7 +84,7 @@ edgeone makers dev
 npm test
 ```
 
-> `npm test` 一次跑完四道校验：逻辑断言（`test/simulate.mjs`）、WebRTC 页 DOM 沙箱（`test/webrtc-dom.mjs`）、双文件内联一致性（`test/consistency.mjs`）、Agent Note 格式（`scripts/verify-agent-notes.mjs`）。
+> `npm test` 一次跑完五道校验：逻辑断言（`test/simulate.mjs`）、主页脚本 DOM 沙箱（`test/ui-dom.mjs`）、WebRTC 页 DOM 沙箱（`test/webrtc-dom.mjs`）、双文件内联一致性（`test/consistency.mjs`）、Agent Note 格式（`scripts/verify-agent-notes.mjs`）。
 > 仓库内置 pre-commit 钩子（`.githooks/pre-commit`）：`npm install` 时自动执行 `git config core.hooksPath .githooks` 启用，提交前自动执行语法检查与 `npm test`；未跑过 `npm install` 可手工执行该命令。
 
 ## 三、部署

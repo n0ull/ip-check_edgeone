@@ -115,6 +115,72 @@ function handleTest(request, ip) {
   return textResponse(ip + '\n', 200, extra);
 }
 
+/* ——— /webrtc 页内嵌浏览器脚本（服务端不执行）：以下为浏览器端代码，以真实函数书写，———
+   ——— 模块加载时经 Function.prototype.toString() 序列化为 WEBRTC_SCRIPT 注入页面。———
+   ——— 无外层字符串包裹，正则与换行按正常 JS 书写，语法由 node --check 直接把关。——— */
+function $(id) { return document.getElementById(id); }
+
+function addIp(arr, ip) { if (ip && arr.indexOf(ip) < 0) arr.push(ip); }
+
+function isPublicIp(ip) {
+  return /^(\d{1,3}\.){3}\d{1,3}$/.test(ip)
+    ? !/^(10\.|127\.|169\.254\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.)/.test(ip)
+    : !/^f[cd][0-9a-f]{2}:|^fe80:/.test(ip);
+}
+
+function extractIp(line) {
+  var toks = line.split(' ');
+  for (var i = 0; i < toks.length; i++) {
+    var t = toks[i];
+    if (!t || t === '0.0.0.0' || t === '::') continue;
+    if (/^(\d{1,3}\.){3}\d{1,3}$/.test(t)) return t;
+    if (t.indexOf(':') !== -1 && /^[0-9a-f:.]+$/i.test(t) && (t.indexOf('::') !== -1 || t.split(':').length >= 4)) return t;
+  }
+  return null;
+}
+
+function detect(timeout) {
+  return new Promise(function (resolve) {
+    var out = { pub: [], loc: [], err: null };
+    var done = false;
+    var pc = null;
+    function finish() { if (done) return; done = true; try { pc.close(); } catch (_) { /* ignore */ } resolve(out); }
+    try { pc = new RTCPeerConnection({ iceServers: [{ urls: ['stun:stun.miwifi.com:3478'] }] }); } catch (e) { out.err = '浏览器不支持 WebRTC'; finish(); return; }
+    try { pc.createDataChannel('probe'); } catch (_) { /* ignore */ }
+    pc.onicecandidate = function (e) {
+      if (!e.candidate) { finish(); return; }
+      var ip = extractIp(e.candidate.candidate);
+      if (!ip || ip.indexOf('.local') !== -1) return;
+      if (e.candidate.type === 'srflx') addIp(out.pub, ip);
+      else if (e.candidate.type === 'host') addIp(out.loc, ip);
+    };
+    pc.createOffer().then(function (o) { return pc.setLocalDescription(o); }).catch(function (e) { out.err = e && e.message ? e.message : String(e); finish(); });
+    setTimeout(finish, timeout);
+  });
+}
+
+async function fetchIp(path) { try { var r = await fetch(path, { cache: 'no-store' }); var t = (await r.text()).trim(); if (r.ok && t && t.length <= 64 && t.indexOf('<') === -1) return t; } catch (_) { /* ignore */ } return null; }
+
+async function run() {
+  var btn = $('run'); btn.disabled = true; btn.textContent = '检测中…';
+  var r = await detect(4000);
+  $('pub').textContent = r.pub.length ? r.pub.join('\n') : (r.err ? '—（' + r.err + '）' : '—（未获取到公网映射）');
+  $('loc').textContent = r.loc.length ? r.loc.join('\n') : '—（未发现或已被 mDNS 隐藏）';
+  var ext = await fetchIp('/test');
+  $('ext').textContent = ext || '—';
+  var verdict = $('verdict');
+  var pubOnly = r.pub.filter(isPublicIp);
+  if (ext && pubOnly.length) {
+    if (pubOnly.indexOf(ext) !== -1) { verdict.className = 'verdict ok'; verdict.textContent = 'WebRTC 公网 IP 与当前出口 IP 一致，未发现 WebRTC 泄漏。'; }
+    else { verdict.className = 'verdict warn'; verdict.textContent = 'WebRTC 暴露了不同的公网 IP（' + pubOnly.join(', ') + '），与当前出口（' + ext + '）不一致，可能存在 WebRTC 泄漏（如 VPN/代理未覆盖）。'; }
+  } else if (ext) { verdict.className = 'verdict warn'; verdict.textContent = '未获取到 WebRTC 公网映射（STUN 不可达或网络限制），无法对比；已显示的局域网 IP 属于本机网卡。'; }
+  else { verdict.className = 'verdict err'; verdict.textContent = '无法获取当前出口 IP，请返回主页重试。'; }
+  btn.disabled = false; btn.textContent = '重新检测';
+}
+
+/** /webrtc 页脚本值：浏览器函数序列化拼接（页面无占位符） */
+export const WEBRTC_SCRIPT = [$, addIp, isPublicIp, extractIp, detect, fetchIp, run].map((f) => f.toString()).join('\n') + "\n$('run').addEventListener('click', run);";
+
 /** WebRTC 检查页：纯浏览器端检测（RTCPeerConnection + ICE candidates），结果不发送到服务器；页面无动态占位符，模块加载时构建一次 */
 const WEBRTC_HTML = (() => {
   const rows = [];
@@ -153,55 +219,7 @@ const WEBRTC_HTML = (() => {
   rows.push('<div class="note">说明：检测依赖 STUN 服务器（stun.miwifi.com），个别网络不可达时仅显示局域网 IP。浏览器以 mDNS 隐藏局域网地址时显示为 .local。WebRTC 泄露指浏览器绕过 VPN/代理暴露真实公网 IP，本页可帮助判断当前浏览器是否如此。</div>');
   rows.push('</div>');
   rows.push('<script>');
-  // 内嵌浏览器 JS 的正则不使用反斜杠转义（\d、\. 会被外层字符串消化），统一用字符类 [0-9]、[.]
-  rows.push('function $(id){return document.getElementById(id)}');
-  rows.push('function addIp(arr, ip){ if(ip && arr.indexOf(ip) < 0) arr.push(ip); }');
-  rows.push('function isPublicIp(ip){ return /^([0-9]{1,3}[.]){3}[0-9]{1,3}$/.test(ip) ? !/^(10[.]|127[.]|169[.]254[.]|192[.]168[.]|172[.](1[6-9]|2[0-9]|3[01])[.])/.test(ip) : !/^f[cd][0-9a-f]{2}:|^fe80:/.test(ip); }');
-  rows.push('function extractIp(line){');
-  rows.push('  var toks = line.split(\' \');');
-  rows.push('  for(var i=0;i<toks.length;i++){');
-  rows.push('    var t = toks[i];');
-  rows.push('    if(!t || t === \'0.0.0.0\' || t === \'::\') continue;');
-  rows.push('    if(/^([0-9]{1,3}[.]){3}[0-9]{1,3}$/.test(t)) return t;');
-  rows.push('    if(t.indexOf(\':\') !== -1 && /^[0-9a-f:.]+$/i.test(t) && (t.indexOf(\'::\') !== -1 || t.split(\':\').length >= 4)) return t;');
-  rows.push('  }');
-  rows.push('  return null;');
-  rows.push('}');
-  rows.push('function detect(timeout){ return new Promise(function(resolve){');
-  rows.push('  var out = { pub: [], loc: [], err: null };');
-  rows.push('  var done = false;');
-  rows.push('  var pc = null;');
-  rows.push('  function finish(){ if(done) return; done = true; try{ pc.close(); }catch(_){} resolve(out); }');
-  rows.push('  try { pc = new RTCPeerConnection({ iceServers: [{ urls: [\'stun:stun.miwifi.com:3478\'] }] }); } catch(e){ out.err = \'浏览器不支持 WebRTC\'; finish(); return; }');
-  rows.push('  try { pc.createDataChannel(\'probe\'); } catch(_){}');
-  rows.push('  pc.onicecandidate = function(e){');
-  rows.push('    if(!e.candidate){ finish(); return; }');
-  rows.push('    var ip = extractIp(e.candidate.candidate);');
-  rows.push('    if(!ip || ip.indexOf(\'.local\') !== -1) return;');
-  rows.push('    if(e.candidate.type === \'srflx\') addIp(out.pub, ip);');
-  rows.push('    else if(e.candidate.type === \'host\') addIp(out.loc, ip);');
-  rows.push('  };');
-  rows.push('  pc.createOffer().then(function(o){ return pc.setLocalDescription(o); }).catch(function(e){ out.err = e && e.message ? e.message : String(e); finish(); });');
-  rows.push('  setTimeout(finish, timeout);');
-  rows.push('});}');
-  rows.push('async function fetchIp(path){ try{ var r = await fetch(path, { cache: \'no-store\' }); var t = (await r.text()).trim(); if(r.ok && t && t.length <= 64 && t.indexOf(\'<\') === -1) return t; }catch(_){} return null; }');
-  rows.push('async function run(){');
-  rows.push('  var btn = $(\'run\'); btn.disabled = true; btn.textContent = \'检测中…\';');
-  rows.push('  var r = await detect(4000);');
-  rows.push('  $(\'pub\').textContent = r.pub.length ? r.pub.join(\'\\n\') : (r.err ? \'—（\' + r.err + \'）\' : \'—（未获取到公网映射）\');');
-  rows.push('  $(\'loc\').textContent = r.loc.length ? r.loc.join(\'\\n\') : \'—（未发现或已被 mDNS 隐藏）\';');
-  rows.push('  var ext = await fetchIp(\'/test\');');
-  rows.push('  $(\'ext\').textContent = ext || \'—\';');
-  rows.push('  var verdict = $(\'verdict\');');
-  rows.push('  var pubOnly = r.pub.filter(isPublicIp);');
-  rows.push('  if(ext && pubOnly.length){');
-  rows.push('    if(pubOnly.indexOf(ext) !== -1){ verdict.className = \'verdict ok\'; verdict.textContent = \'WebRTC 公网 IP 与当前出口 IP 一致，未发现 WebRTC 泄漏。\'; }');
-  rows.push('    else { verdict.className = \'verdict warn\'; verdict.textContent = \'WebRTC 暴露了不同的公网 IP（\' + pubOnly.join(\', \') + \'），与当前出口（\' + ext + \'）不一致，可能存在 WebRTC 泄漏（如 VPN/代理未覆盖）。\'; }');
-  rows.push('  } else if(ext){ verdict.className = \'verdict warn\'; verdict.textContent = \'未获取到 WebRTC 公网映射（STUN 不可达或网络限制），无法对比；已显示的局域网 IP 属于本机网卡。\'; }');
-  rows.push('  else { verdict.className = \'verdict err\'; verdict.textContent = \'无法获取当前出口 IP，请返回主页重试。\'; }');
-  rows.push('  btn.disabled = false; btn.textContent = \'重新检测\';');
-  rows.push('}');
-  rows.push('$(\'run\').addEventListener(\'click\', run);');
+  rows.push(WEBRTC_SCRIPT);
   rows.push('</script>');
   rows.push('</body></html>');
   return rows.join('\n');

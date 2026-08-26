@@ -18,7 +18,7 @@ description: 'IP 查询服务（EdgeOne Makers Edge Functions）的开发、验�
 ## 开发与本地验证
 
 1. 修改 `edge-functions/` 前先阅读对应 Agent Note，确认行为变更是否需要更新笔记；`getClientIp` 与响应工具函数在 `index.js` 与 `[[default]].js` 双份内联，改一必改二。
-2. 语法与逻辑验证：`node --check edge-functions/index.js` 与 `node --check "edge-functions/[[default]].js"`，然后 `npm test`（`test/simulate.mjs` 逻辑断言 + `test/webrtc-dom.mjs` DOM 沙箱 + `test/consistency.mjs` 双文件一致性 + `verify-agent-notes.mjs` 笔记格式）。
+2. 语法与逻辑验证：`node --check edge-functions/index.js` 与 `node --check "edge-functions/[[default]].js"`，然后 `npm test`（`test/simulate.mjs` 逻辑断言 + `test/ui-dom.mjs` 主页脚本 DOM 沙箱 + `test/webrtc-dom.mjs` WebRTC 页 DOM 沙箱 + `test/consistency.mjs` 双文件一致性 + `verify-agent-notes.mjs` 笔记格式）。
 3. 本地联调可 `edgeone makers dev`（8088 端口，`/4` `/6` `/test` 路径端点；无 `eo` 时回退代理头）。
 
 ## 部署

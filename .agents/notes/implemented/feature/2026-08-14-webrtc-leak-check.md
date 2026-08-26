@@ -25,5 +25,5 @@ WebRTC 是浏览器内置的 P2P 能力：页面 JS 建立 `RTCPeerConnection` �
 ## Consequences
 
 站点增加一个检查页与一个页脚链接，功能独立、主页不变。
-维护要点：内嵌浏览器 JS 以字符串形式包在 `rows.push('...')` 中，`\d`、`\.`、`\n` 会被外层字符串转义消化——内嵌正则一律用字符类（`[0-9]`、`[.]`），需要换行字面量时写 `\\n`；`extractIp` 按空白分词后逐 token 校验 IP 格式（防 `candidate:1` 的 `e:1` 误匹配，`e` 是十六进制字符）；`test/simulate.mjs` 用 `new Function` 校验内嵌 JS 语法，`test/webrtc-dom.mjs` 用 mock DOM/RTCPeerConnection/fetch 在 vm 沙箱模拟点击全流程，共同防回归。
+维护要点：内嵌浏览器 JS 已改为模块顶层真实函数经 `Function.prototype.toString()` 序列化注入（见[浏览器脚本即真实函数笔记](../simplification/2026-08-26-browser-js-as-real-functions.md)），字符串转义纪律随之退役——正则直接写 `\d`、`\.`，换行字面量直接写 `'\n'`；`extractIp` 按空白分词后逐 token 校验 IP 格式（防 `candidate:1` 的 `e:1` 误匹配，`e` 是十六进制字符）；`test/webrtc-dom.mjs` 直接 `import { WEBRTC_SCRIPT }`，在共享 vm 沙箱（`test/helpers/dom-sandbox.mjs`）模拟点击全流程防回归。
 局限：检测依赖公共 STUN 可达性（国内部分网络不可达时无公网映射，页面已给出说明）；局域网地址可能被浏览器 mDNS 隐藏；判定仅对比『WebRTC 公网 IP』与『本站出口 IP』，不等同于权威 VPN 泄漏审计。

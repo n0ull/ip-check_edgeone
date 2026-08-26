@@ -10,8 +10,8 @@ Status: implemented
 ## Decision
 
 - 新增 `test/consistency.mjs`：从两个函数文件提取 10 个共享函数（`isIpv4`/`isIpv6`/`getClientIp`/`baseHeaders`/`textResponse`/`jsonResponse`/`wantsJson`/`handleV4`/`handleV6`/`handleTest`）的源码（按花括号配对提取，约束为函数体内字符串/正则中的花括号成对出现），仅归一化行尾差异后逐字比对；配套把 `handleV4`/`handleV6` 的漂移文案统一为详细版；
-- `test/simulate.mjs` 主页 UI 增加 `new Function` 语法有效性断言（与 `/webrtc` 同款回归防护），并补充 `Accept: application/json` 协商断言与两个 405 方法门禁断言；
-- `npm test` 串起全部本地验证：`simulate.mjs` → `webrtc-dom.mjs` → `consistency.mjs` → `verify-agent-notes.mjs`，一个命令即完整门禁，同时挂入 pre-commit 钩子（见[提交前预检笔记](../process/2026-08-15-pre-commit-gate.md)）。
+- `test/simulate.mjs` 补充 `Accept: application/json` 协商断言与两个 405 方法门禁断言（主页 UI 的 `new Function` 语法冒烟断言已随[浏览器脚本即真实函数](../simplification/2026-08-26-browser-js-as-real-functions.md)退役——脚本改为真实函数后，语法由模块 import 与 `node --check` 直接保证）；
+- `npm test` 串起全部本地验证：`simulate.mjs` → `ui-dom.mjs` → `webrtc-dom.mjs` → `consistency.mjs` → `verify-agent-notes.mjs`（`ui-dom.mjs` 后增，见[浏览器脚本即真实函数](../simplification/2026-08-26-browser-js-as-real-functions.md)），一个命令即完整门禁，同时挂入 pre-commit 钩子（见[提交前预检笔记](../process/2026-08-15-pre-commit-gate.md)）。
 
 ## Alternatives considered
 
@@ -20,5 +20,5 @@ Status: implemented
 
 ## Consequences
 
-『改一忘改二』在本地测试阶段即失败，不再依赖人肉同步；主页内嵌 JS 获得与 `/webrtc` 同级的语法回归防护；`npm test` 单命令覆盖逻辑断言、DOM 沙箱、双文件一致性与笔记格式。
+『改一忘改二』在本地测试阶段即失败，不再依赖人肉同步；`npm test` 单命令覆盖逻辑断言、双页 DOM 沙箱、双文件一致性与笔记格式。
 代价：共享函数源码被锁定为逐字一致（含注释与字符串内空白），微调必须双份同步——这正是契约要求的纪律，改由机械门禁执行；花括号配对的提取方式要求函数体内花括号成对出现，新增共享函数时需遵守。

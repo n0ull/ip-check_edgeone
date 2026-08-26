@@ -8,7 +8,7 @@
     "dev": "edgeone makers dev",
     "deploy": "edgeone makers deploy -a overseas",
     "deploy:preview": "edgeone makers deploy -e preview -a overseas",
-    "test": "node test/simulate.mjs && node test/webrtc-dom.mjs && node test/consistency.mjs && node scripts/verify-agent-notes.mjs",
+    "test": "node test/simulate.mjs && node test/ui-dom.mjs && node test/webrtc-dom.mjs && node test/consistency.mjs && node scripts/verify-agent-notes.mjs",
     "verify:notes": "node scripts/verify-agent-notes.mjs",
     "prepare": "node scripts/install-hooks.mjs"
   }

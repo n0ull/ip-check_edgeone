@@ -132,6 +132,78 @@ function handleTest(request, ip) {
   return textResponse(ip + '\n', 200, extra);
 }
 
+/* ——— 主页内嵌浏览器脚本（服务端不执行）：以下为浏览器端代码，以真实函数书写，———
+   ——— 模块加载时经 Function.prototype.toString() 序列化为 UI_SCRIPT 注入页面。———
+   ——— 无外层字符串包裹，正则与换行按正常 JS 书写，语法由 node --check 直接把关。——— */
+function setStatus(id, text, cls) {
+  var el = document.getElementById(id);
+  el.textContent = text;
+  el.className = 'status ' + (cls || '');
+}
+
+function showHint() {
+  var h = document.getElementById('hint');
+  if (h) h.style.display = 'block';
+}
+
+function looksLikeIp(t) {
+  return t && t.length <= 64 && !/[一-龥]/.test(t) && (t.indexOf('.') !== -1 || t.indexOf(':') !== -1);
+}
+
+async function grab(base, sub, label) {
+  var text = null;
+  var viaFallback = false;
+  try {
+    var res = await fetch('https://' + sub + '.' + base + '/', { cache: 'no-store' });
+    var t = (await res.text()).trim();
+    if (res.ok && looksLikeIp(t)) text = t;
+  } catch (e) { /* 子域不可达（未绑定自定义域名 / DNS 未配置），走同源回退 */ }
+  if (!text) {
+    try {
+      var res2 = await fetch('/' + sub, { cache: 'no-store' });
+      var t2 = (await res2.text()).trim();
+      if (res2.ok && looksLikeIp(t2)) { text = t2; viaFallback = true; }
+      else if (t2 && /[一-龥]/.test(t2)) {
+        var reason = t2.split('，')[0] || '不可用';
+        setStatus(label + '-status', reason, 'err');
+        return null;
+      }
+    } catch (e2) { /* ignore */ }
+  }
+  if (!text) {
+    setStatus(label + '-status', '请求失败', 'err');
+    return null;
+  }
+  document.getElementById(label).textContent = text;
+  setStatus(label + '-status', viaFallback ? 'OK（同源回退）' : 'OK', viaFallback ? 'warn' : 'ok');
+  if (viaFallback) showHint();
+  return text;
+}
+
+async function init(base) {
+  var results = await Promise.all([
+    grab(base, '4', 'v4'),
+    grab(base, 'test', 'test')
+  ]);
+  var verdict = document.getElementById('verdict');
+  var t = results[1];
+  if (t && t.indexOf(':') !== -1) { verdict.textContent = 'IPv6 访问优先'; verdict.className = 'badge ipv6'; }
+  else if (t) { verdict.textContent = 'IPv4 连接'; verdict.className = 'badge ipv4'; setStatus('test-status', '本次连接为 IPv4，无法判定 IPv6 是否存在', 'warn'); }
+  else { verdict.textContent = '无法判定'; verdict.className = 'badge unknown'; }
+  // IPv6 卡片：由双栈测试结果派生（IPv6 连接时 test 返回的地址即你的 IPv6）
+  if (t && t.indexOf(':') !== -1) {
+    document.getElementById('v6').textContent = t;
+    setStatus('v6-status', 'OK', 'ok');
+  } else if (t) {
+    setStatus('v6-status', '当前连接为 IPv4，未获取到 IPv6', 'err');
+  } else {
+    setStatus('v6-status', '不可用', 'err');
+  }
+}
+
+/** 主页脚本值：浏览器函数序列化拼接；__BASE__ 占位符由 renderUi 在渲染时替换 */
+export const UI_SCRIPT = [setStatus, showHint, looksLikeIp, grab, init].map((f) => f.toString()).join('\n') + "\ninit('__BASE__');";
+
 /** 查询网页模板：仅 __VERDICT_CLS__/__VERDICT__/__BASE__ 三处占位符，模块加载时构建一次，请求时只做替换 */
 const UI_TEMPLATE = (() => {
   const rows = [];
@@ -182,70 +254,8 @@ const UI_TEMPLATE = (() => {
   rows.push('<div class="foot"><a href="/webrtc">WebRTC 检查</a> · Powered by EdgeOne</div>');
   rows.push('</div>');
   rows.push('<script>');
-  rows.push("  var BASE = '__BASE__';");
-  rows.push("  function setStatus(id, text, cls) {");
-  rows.push("    var el = document.getElementById(id);");
-  rows.push("    el.textContent = text;");
-  rows.push("    el.className = 'status ' + (cls || '');");
-  rows.push("  }");
-  rows.push("  function showHint() {");
-  rows.push("    var h = document.getElementById('hint');");
-  rows.push("    if (h) h.style.display = 'block';");
-  rows.push("  }");
-  rows.push("  function looksLikeIp(t) {");
-  rows.push("    return t && t.length <= 64 && !/[一-龥]/.test(t) && (t.indexOf('.') !== -1 || t.indexOf(':') !== -1);");
-  rows.push("  }");
-  rows.push("  async function grab(sub, label) {");
-  rows.push("    var text = null;");
-  rows.push("    var viaFallback = false;");
-  rows.push("    try {");
-  rows.push("      var res = await fetch('https://' + sub + '.' + BASE + '/', { cache: 'no-store' });");
-  rows.push("      var t = (await res.text()).trim();");
-  rows.push("      if (res.ok && looksLikeIp(t)) text = t;");
-  rows.push("    } catch (e) { /* 子域不可达（未绑定自定义域名 / DNS 未配置），走同源回退 */ }");
-  rows.push("    if (!text) {");
-  rows.push("      try {");
-  rows.push("        var res2 = await fetch('/' + sub, { cache: 'no-store' });");
-  rows.push("        var t2 = (await res2.text()).trim();");
-  rows.push("        if (res2.ok && looksLikeIp(t2)) { text = t2; viaFallback = true; }");
-  rows.push("        else if (t2 && /[一-龥]/.test(t2)) {");
-  rows.push("          var reason = t2.split('，')[0] || '不可用';");
-  rows.push("          setStatus(label + '-status', reason, 'err');");
-  rows.push("          return null;");
-  rows.push("        }");
-  rows.push("      } catch (e2) { /* ignore */ }");
-  rows.push("    }");
-  rows.push("    if (!text) {");
-  rows.push("      setStatus(label + '-status', '请求失败', 'err');");
-  rows.push("      return null;");
-  rows.push("    }");
-  rows.push("    document.getElementById(label).textContent = text;");
-  rows.push("    setStatus(label + '-status', viaFallback ? 'OK（同源回退）' : 'OK', viaFallback ? 'warn' : 'ok');");
-  rows.push("    if (viaFallback) showHint();");
-  rows.push("    return text;");
-  rows.push("  }");
-  rows.push("  async function init() {");
-  rows.push("    var results = await Promise.all([");
-  rows.push("      grab('4', 'v4'),");
-  rows.push("      grab('test', 'test')");
-  rows.push("    ]);");
-  rows.push("    var verdict = document.getElementById('verdict');");
-  rows.push("    var t = results[1];");
-  rows.push("    if (t && t.indexOf(':') !== -1) { verdict.textContent = 'IPv6 访问优先'; verdict.className = 'badge ipv6'; }");
-  rows.push("    else if (t) { verdict.textContent = 'IPv4 连接'; verdict.className = 'badge ipv4'; setStatus('test-status', '本次连接为 IPv4，无法判定 IPv6 是否存在', 'warn'); }");
-  rows.push("    else { verdict.textContent = '无法判定'; verdict.className = 'badge unknown'; }");
-  rows.push("    // IPv6 卡片：由双栈测试结果派生（IPv6 连接时 test 返回的地址即你的 IPv6）");
-  rows.push("    if (t && t.indexOf(':') !== -1) {");
-  rows.push("      document.getElementById('v6').textContent = t;");
-  rows.push("      setStatus('v6-status', 'OK', 'ok');");
-  rows.push("    } else if (t) {");
-  rows.push("      setStatus('v6-status', '当前连接为 IPv4，未获取到 IPv6', 'err');");
-  rows.push("    } else {");
-  rows.push("      setStatus('v6-status', '不可用', 'err');");
-  rows.push("    }");
-  rows.push("  }");
-  rows.push("  init();");
-  rows.push("  </script>");
+  rows.push(UI_SCRIPT);
+  rows.push('</script>');
   rows.push('</body></html>');
   return rows.join('\n');
 })();
