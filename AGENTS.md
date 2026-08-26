@@ -8,3 +8,17 @@
 - **语义措辞严谨**：IPv4 连接只称『连接』不称『优先』；`ipv6Preferred` 仅在 IPv6 时输出。[语义](.agents/notes/implemented/feature/2026-08-14-protocol-family-semantics.md)
 - **非平凡变更必须携带 Agent Note**（格式契约见 [.agents/notes/README.md](.agents/notes/README.md)，机械校验 `npm run verify:notes`）；修改函数行为后同步更新测试断言与 [README.md](README.md)。
 - **开发验证**：`npm test`（simulate 逻辑断言 + webrtc-dom 沙箱 + consistency 双文件一致性 + verify:notes）+ `node --check` 两个函数文件；pre-commit 钩子自动执行（`npm install` 启用）；部署用 `npm run deploy`。[工作流](.agents/skills/ip-service-workflow/SKILL.md)
+
+## Agent skills
+
+### Issue tracker
+
+Issues 与 spec 存放于本仓库的 GitHub Issues，通过 `gh` CLI 操作。详见 `docs/agents/issue-tracker.md`。
+
+### Triage labels
+
+使用五个标准 triage 标签原名：`needs-triage`、`needs-info`、`ready-for-agent`、`ready-for-human`、`wontfix`。详见 `docs/agents/triage-labels.md`。
+
+### Domain docs
+
+单上下文（single-context）布局：根目录 `CONTEXT.md` + `docs/adr/`，按需惰性创建。详见 `docs/agents/domain.md`。
