@@ -90,6 +90,14 @@ function wantsJson(request) {
   return acc.indexOf('application/json') !== -1;
 }
 
+/** 方法门禁：本服务只有 IP 回显与页面，非 GET/HEAD 一律 405；放行返回 null */
+function methodGuard(request) {
+  if (request.method !== 'GET' && request.method !== 'HEAD') {
+    return textResponse('仅支持 GET/HEAD 请求。\n', 405, { allow: 'GET, HEAD' });
+  }
+  return null;
+}
+
 function handleV4(request, ip) {
   if (!ip) return textResponse('无法获取客户端 IP 地址。\n', 400);
   if (isIpv6(ip)) {
@@ -260,10 +268,8 @@ function renderUi(family, base) {
 
 export async function onRequest(context) {
   const { request } = context;
-  // 方法门禁：本服务只有 IP 回显与页面，非 GET/HEAD 一律 405
-  if (request.method !== 'GET' && request.method !== 'HEAD') {
-    return textResponse('仅支持 GET/HEAD 请求。\n', 405, { allow: 'GET, HEAD' });
-  }
+  const blocked = methodGuard(request);
+  if (blocked) return blocked;
   const info = hostInfo(request);
   const ip = getClientIp(request);
   const family = ip ? (isIpv6(ip) ? 'IPv6' : 'IPv4') : '未知';
