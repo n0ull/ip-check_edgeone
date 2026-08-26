@@ -13,12 +13,12 @@ IP 查询服务的正确性完全取决于**客户端真实 IP** 的获取。两
 - **生产环境**（存在 `request.eo` 对象）：只信 `request.eo.clientIp`——EdgeOne 边缘节点注入的客户端真实 IP。即使 `eo.clientIp` 缺失也**不再回退代理头**（宁可返回空导致 400，也不返回可伪造的值）。
 - **本地调试**（`edgeone makers dev`，无 `eo` 对象）：回退常见代理头（`x-forwarded-for` 首个地址、`x-real-ip`、`true-client-ip`、`eo-client-ip`、`cf-connecting-ip`），仅用于本地联调。
 
-共享函数（`getClientIp`、`familyOf`、`methodGuard`、`handleV4`、`handleTest` 等）集中在 `_shared.js`，两入口文件不再内联副本。边缘构建器对每个入口独立执行 esbuild `bundle: true`（无 `external`），本地相对路径 import 在构建期被解析并内联，行为与原先双份内联等价，但实现唯一化。决策经过见[共享模块提取笔记](../simplification/2026-08-27-shared-module-extraction.md)与[import 调研笔记](../proposed/process/2026-08-27-edgeone-makers-import-support-investigation.md)。
+共享函数（`getClientIp`、`familyOf`、`methodGuard`、`handleV4`、`handleTest` 等）集中在 `_shared.js`，两入口文件不再内联副本。边缘构建器对每个入口独立执行 esbuild `bundle: true`（无 `external`），本地相对路径 import 在构建期被解析并内联，行为与原先双份内联等价，但实现唯一化。决策经过见[共享模块提取笔记](../simplification/2026-08-27-shared-module-extraction.md)与[import 调研笔记](../implemented/process/2026-08-27-edgeone-makers-import-support-investigation.md)。
 
 ## Alternatives considered
 
 - **生产环境也回退代理头**——`X-Forwarded-For` 可由任意客户端伪造，回显服务将输出攻击者控制的地址，破坏服务可信度；放弃。
-- **继续双份内联 + `consistency.mjs` 机械兜底**（原定案）——2024-08 时边缘构建器对跨文件 import 的支持未经验证，以"失败即全站不可用"为由选择双份内联，并以 `test/consistency.mjs` 机械校验双份一致。2026-08 调研（[import 调研笔记](../proposed/process/2026-08-27-edgeone-makers-import-support-investigation.md)）证实当前 CLI 构建器基于 esbuild `bundle: true`（无 `external`），跨文件 import 安全；原始前提失效，按"正确性 > 稳定性"原则迁移到共享模块。
+- **继续双份内联 + `consistency.mjs` 机械兜底**（原定案）——2024-08 时边缘构建器对跨文件 import 的支持未经验证，以"失败即全站不可用"为由选择双份内联，并以 `test/consistency.mjs` 机械校验双份一致。2026-08 调研（[import 调研笔记](../implemented/process/2026-08-27-edgeone-makers-import-support-investigation.md)）证实当前 CLI 构建器基于 esbuild `bundle: true`（无 `external`），跨文件 import 安全；原始前提失效，按"正确性 > 稳定性"原则迁移到共享模块。
 
 ## Consequences
 

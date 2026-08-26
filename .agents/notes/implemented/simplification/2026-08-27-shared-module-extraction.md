@@ -8,7 +8,7 @@ Status: implemented
 
 双份内联的同步维护负担已由 `test/consistency.mjs` 机械兜底（交集推导 + 逐字比对），但兜底本身也是代码要维护，且共享逻辑无法被独立单元测试——`simulate.mjs` 只能通过 `onRequest` 的响应间接验证它们。这是补救而非根除。
 
-2026-08 调研（[import 调研笔记](../proposed/process/2026-08-27-edgeone-makers-import-support-investigation.md)）以 CLI 包反编译一手证据证实：当前 CLI（`edgeone` v1.6.28）的边缘函数构建器对每个入口独立调用 esbuild 并开启 `bundle: true`，未传入 `external` 限制，本地相对路径 import 在构建期被解析并内联。原始「未经验证」前提失效，迁移条件成熟。
+2026-08 调研（[import 调研笔记](../process/2026-08-27-edgeone-makers-import-support-investigation.md)）以 CLI 包反编译一手证据证实：当前 CLI（`edgeone` v1.6.28）的边缘函数构建器对每个入口独立调用 esbuild 并开启 `bundle: true`，未传入 `external` 限制，本地相对路径 import 在构建期被解析并内联。原始「未经验证」前提失效，迁移条件成熟。
 
 ## Decision
 
@@ -39,6 +39,8 @@ Status: implemented
 共享函数实现唯一化，「改一必改二」的同步纪律消失；`consistency.mjs` 及其 ~70 行校验代码退役。`simulate.mjs` 的 `familyOf` 纯函数断言改为直接 import `_shared.js`，测试与被测契约的 seam 对齐。
 
 边缘构建 bundle 时共享代码在两个入口产物中各出现一份（esbuild 独立 bundle 每个入口），对当前 ~130 行工具函数可忽略；若共享模块增长到 KB 级需评估 bundle 体积（边缘函数有大小限制）。
+
+部署冒烟（2026-08-27，一次性 Upload 项目 `ip-check-import-smoke`，迁移代码真实构建部署）证实：构建通过；`/4` `/test` `/api/self`、405、404 行为与迁移前一致；toString 序列化语义存活但文本不保真（esbuild AST 重印：缩进/引号/花括号/非 ASCII 转义改写、注释剥离，函数名保留）——部署产物页面脚本经 DOM 沙箱四路径验证（12 断言全绿）。详见[import 调研笔记](../process/2026-08-27-edgeone-makers-import-support-investigation.md)（已随本验证转 implemented）。
 
 `[[]default].js` 的 404 响应由 `jsonResponse` 提供（content-type: application/json），与 `/api/self` 一致；`baseHeaders`/`jsonResponse` 作为共享导出供入口文件直接使用。
 

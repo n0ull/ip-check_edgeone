@@ -7,7 +7,7 @@
  * 行为与原先双份内联等价，但实现唯一化，消除同步维护负担。
  *
  * 背景与决策依据见 .agents/notes/implemented/simplification/2026-08-27-shared-module-extraction.md
- * 与 .agents/notes/proposed/process/2026-08-27-edgeone-makers-import-support-investigation.md。
+ * 与 .agents/notes/implemented/process/2026-08-27-edgeone-makers-import-support-investigation.md。
  *
  * 本文件不导出 onRequest，构建器的 isPagesFunction 会将其过滤，不会注册为路由。
  */
