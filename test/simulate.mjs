@@ -154,5 +154,17 @@ await section('[[default]].js · 路径端点', async () => {
   check('未知路径 → 404 JSON', r.res.status === 404);
 });
 
+// ---------- familyOf / verdictFor：措辞契约单点的纯函数断言 ----------
+await section('familyOf / verdictFor 纯函数', async () => {
+  check('familyOf IPv4', indexMod.familyOf('1.2.3.4') === 'IPv4');
+  check('familyOf IPv6', indexMod.familyOf('240e:390:abcd:1234::1') === 'IPv6');
+  check('familyOf 空输入 → null', indexMod.familyOf('') === null && indexMod.familyOf(null) === null);
+  const v6 = indexMod.verdictFor('IPv6');
+  const v4 = indexMod.verdictFor('IPv4');
+  check('verdictFor IPv6（文案+完整 className）', !!v6 && v6.text === 'IPv6 访问优先' && v6.cls === 'badge ipv6');
+  check('verdictFor IPv4（文案+完整 className）', !!v4 && v4.text === 'IPv4 连接' && v4.cls === 'badge ipv4');
+  check('verdictFor 未知 → null（第三态留调用点）', indexMod.verdictFor('未知') === null && indexMod.verdictFor('unknown') === null);
+});
+
 console.log('\n结果: ' + passed + ' 通过, ' + failed + ' 失败');
 process.exit(failed === 0 ? 0 : 1);

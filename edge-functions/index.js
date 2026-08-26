@@ -20,6 +20,12 @@ function isIpv6(ip) {
   return typeof ip === 'string' && ip.indexOf(':') !== -1;
 }
 
+/** 协议族判定：'IPv6' | 'IPv4'；空/非法输入返回 null——未知标签由调用点按上下文补充（页面『未知』/API『unknown』） */
+export function familyOf(ip) {
+  if (!ip) return null;
+  return isIpv6(ip) ? 'IPv6' : 'IPv4';
+}
+
 /**
  * 获取客户端真实 IP。
  * 生产环境（EdgeOne 边缘节点注入 request.eo）：只信 eo.clientIp，忽略可伪造的代理头；
@@ -113,7 +119,7 @@ function handleV4(request, ip) {
 
 function handleTest(request, ip) {
   if (!ip) return textResponse('无法获取客户端 IP 地址。\n', 400);
-  const family = isIpv6(ip) ? 'IPv6' : 'IPv4';
+  const family = familyOf(ip);
   if (wantsJson(request)) {
     // 语义严谨：仅当本次连接确为 IPv6 时输出 ipv6Preferred；
     // IPv4 连接无法判定“IPv6 是否存在/是否优先”，故不输出该字段
@@ -182,22 +188,32 @@ async function init(base) {
   ]);
   var verdict = document.getElementById('verdict');
   var t = results[1];
-  if (t && t.indexOf(':') !== -1) { verdict.textContent = 'IPv6 访问优先'; verdict.className = 'badge ipv6'; }
-  else if (t) { verdict.textContent = 'IPv4 连接'; verdict.className = 'badge ipv4'; setStatus('test-status', '本次连接为 IPv4，无法判定 IPv6 是否存在', 'warn'); }
+  var f = t ? familyOf(t) : null;
+  var v = f ? verdictFor(f) : null;
+  if (v) { verdict.textContent = v.text; verdict.className = v.cls; }
   else { verdict.textContent = '无法判定'; verdict.className = 'badge unknown'; }
+  if (f === 'IPv4') { setStatus('test-status', '本次连接为 IPv4，无法判定 IPv6 是否存在', 'warn'); }
   // IPv6 卡片：由双栈测试结果派生（IPv6 连接时 test 返回的地址即你的 IPv6）
-  if (t && t.indexOf(':') !== -1) {
+  if (f === 'IPv6') {
     document.getElementById('v6').textContent = t;
     setStatus('v6-status', 'OK', 'ok');
-  } else if (t) {
+  } else if (f) {
     setStatus('v6-status', '当前连接为 IPv4，未获取到 IPv6', 'err');
   } else {
     setStatus('v6-status', '不可用', 'err');
   }
 }
 
-/** 主页脚本值：浏览器函数序列化拼接；__BASE__ 占位符由 renderUi 在渲染时替换 */
-export const UI_SCRIPT = [setStatus, showHint, looksLikeIp, grab, init].map((f) => f.toString()).join('\n') + "\ninit('__BASE__');";
+/** 徽章判定表（family → 文案/样式 的唯一来源）：服务端 renderUi 首屏注入与浏览器 init 校准共用同一实现（经 UI_SCRIPT 序列化注入页面）。
+    未知态不归此管——服务端『检测中…』（尚未发生）与浏览器『无法判定』（已失败）语义不同，各留调用点。 */
+export function verdictFor(family) {
+  if (family === 'IPv6') return { text: 'IPv6 访问优先', cls: 'badge ipv6' };
+  if (family === 'IPv4') return { text: 'IPv4 连接', cls: 'badge ipv4' };
+  return null;
+}
+
+/** 主页脚本值：浏览器函数序列化拼接（isIpv6 是 familyOf 的依赖，一并序列化）；__BASE__ 占位符由 renderUi 在渲染时替换 */
+export const UI_SCRIPT = [setStatus, showHint, looksLikeIp, grab, init, isIpv6, familyOf, verdictFor].map((f) => f.toString()).join('\n') + "\ninit('__BASE__');";
 
 /** 查询网页模板：仅 __VERDICT_CLS__/__VERDICT__/__BASE__ 三处占位符，模块加载时构建一次，请求时只做替换 */
 const UI_TEMPLATE = (() => {
@@ -235,7 +251,7 @@ const UI_TEMPLATE = (() => {
   rows.push('</head>');
   rows.push('<body>');
   rows.push('<div class="wrap">');
-  rows.push('<header><h1>IP 查询</h1><span id="verdict" class="badge __VERDICT_CLS__">__VERDICT__</span></header>');
+  rows.push('<header><h1>IP 查询</h1><span id="verdict" class="__VERDICT_CLS__">__VERDICT__</span></header>');
   rows.push('<div class="sub">返回你的公网 IP 地址，不含属地、ASN 信息</div>');
   rows.push('<div class="field"><div class="lbl"><span>IPv4 地址</span><span class="status" id="v4-status">加载中…</span></div><div class="ip" id="v4">—</div></div>');
   rows.push('<div class="field"><div class="lbl"><span>IPv6 地址</span><span class="status" id="v6-status">加载中…</span></div><div class="ip" id="v6">—</div></div>');
@@ -260,8 +276,10 @@ function renderUi(family, base) {
   // 占位符替换（徽章判定与 BASE），并做基础转义避免注入
   const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const safeBase = String(base).replace(/[^a-zA-Z0-9.-]/g, '');
-  html = html.split('__VERDICT_CLS__').join(family === 'IPv6' ? 'ipv6' : (family === 'IPv4' ? 'ipv4' : 'unknown'));
-  html = html.split('__VERDICT__').join(family === 'IPv6' ? 'IPv6 访问优先' : (family === 'IPv4' ? 'IPv4 连接' : '检测中…'));
+  // 徽章判定收敛于 verdictFor（与浏览器 init 共用同一实现）；未知态为服务端专属『检测中…』（JS 加载后校准）
+  const v = verdictFor(family) || { text: '检测中…', cls: 'badge unknown' };
+  html = html.split('__VERDICT_CLS__').join(v.cls);
+  html = html.split('__VERDICT__').join(v.text);
   html = html.split('__BASE__').join(esc(safeBase));
   return html;
 }
@@ -272,7 +290,7 @@ export async function onRequest(context) {
   if (blocked) return blocked;
   const info = hostInfo(request);
   const ip = getClientIp(request);
-  const family = ip ? (isIpv6(ip) ? 'IPv6' : 'IPv4') : '未知';
+  const family = familyOf(ip) || '未知';
 
   switch (info.sub) {
     case '4':

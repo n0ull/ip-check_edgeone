@@ -20,6 +20,12 @@ function isIpv6(ip) {
   return typeof ip === 'string' && ip.indexOf(':') !== -1;
 }
 
+/** 协议族判定：'IPv6' | 'IPv4'；空/非法输入返回 null——未知标签由调用点按上下文补充（页面『未知』/API『unknown』） */
+export function familyOf(ip) {
+  if (!ip) return null;
+  return isIpv6(ip) ? 'IPv6' : 'IPv4';
+}
+
 /**
  * 获取客户端真实 IP。
  * 生产环境（EdgeOne 边缘节点注入 request.eo）：只信 eo.clientIp，忽略可伪造的代理头；
@@ -95,7 +101,7 @@ function handleV4(request, ip) {
 
 function handleTest(request, ip) {
   if (!ip) return textResponse('无法获取客户端 IP 地址。\n', 400);
-  const family = isIpv6(ip) ? 'IPv6' : 'IPv4';
+  const family = familyOf(ip);
   if (wantsJson(request)) {
     // 语义严谨：仅当本次连接确为 IPv6 时输出 ipv6Preferred；
     // IPv4 连接无法判定“IPv6 是否存在/是否优先”，故不输出该字段
@@ -246,7 +252,7 @@ export async function onRequest(context) {
     case '/api/self':
       return jsonResponse({
         ip: ip || null,
-        family: ip ? (isIpv6(ip) ? 'IPv6' : 'IPv4') : 'unknown',
+        family: familyOf(ip) || 'unknown',
         service: 'edgeone-ip',
       });
     case '/favicon.ico':

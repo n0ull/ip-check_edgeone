@@ -11,7 +11,7 @@ Status: implemented
 
 语义严谨化（允许破坏性变更，正确性优先）：
 
-- **UI 徽章**：IPv6 连接 →『IPv6 访问优先』（事实成立）；IPv4 连接 →『IPv4 连接』，双栈测试行状态补充『本次连接为 IPv4，无法判定 IPv6 是否存在』；服务端初始徽章同文案；
+- **UI 徽章**：IPv6 连接 →『IPv6 访问优先』（事实成立）；IPv4 连接 →『IPv4 连接』，双栈测试行状态补充『本次连接为 IPv4，无法判定 IPv6 是否存在』；服务端初始徽章同文案（两态徽章文案与样式的唯一承载点为 `verdictFor`，服务端 renderUi 与浏览器 init 共用同一实现，见[判定表收敛笔记](../simplification/2026-08-27-verdict-single-source.md)）；
 - **JSON**：`ipv6Preferred` 字段**仅在 `family === 'IPv6'` 时输出 `true`**；IPv4 连接不输出该字段（字段缺失即『无法判定』，而非 `false`）；
 - **响应头**：`x-ip-preferred` 按同一规则仅 IPv6 连接时输出，IPv4 连接不输出该头（见[响应头对齐与方法门禁笔记](2026-08-15-preferred-header-and-method-guard.md)）；`x-ip-family` 两种协议族均输出；
 - 措辞检查进入测试套件：断言 UI 不含『IPv4 访问优先』、IPv4 JSON 不含 `ipv6Preferred`。

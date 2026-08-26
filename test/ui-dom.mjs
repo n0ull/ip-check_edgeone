@@ -3,7 +3,7 @@
  * 双栈成功 / 同源回退 / IPv4 连接判定 / 中文错误原因；并断言抓取日志不请求 6. 子域。
  * 用法：node test/ui-dom.mjs
  */
-import { UI_SCRIPT } from '../edge-functions/index.js';
+import { UI_SCRIPT, onRequest } from '../edge-functions/index.js';
 import { makeDom, runScript, checker } from './helpers/dom-sandbox.mjs';
 
 const { check, report } = checker();
@@ -71,14 +71,19 @@ const V6 = '240e:390:abcd:1234::1';
   check('IPv4：v6 卡片显示未获取到', els['v6-status'].textContent === '当前连接为 IPv4，未获取到 IPv6' && (!els['v6'] || els['v6'].textContent === ''));
 }
 
-// —— 路径 4：中文错误原因（如 IPv6 连接访问 4. 的 400 文案）——
+// —— 路径 4：中文错误原因（期望文案从 handleV4 真实输出派生：钉来源，不钉副本）——
 {
-  const errBody = '当前通过 IPv6 连接，无法获取您的 IPv4 地址。\n请在 4.example.com 的站点设置中关闭 IPv6 访问（强制仅 IPv4 可达），或改用 test 端点。\n';
+  // 真实服务端输出：IPv6 连接访问 4. 子域 → handleV4 的 400 中文文案
+  const errReq = new Request('https://4.' + BASE + '/');
+  Object.defineProperty(errReq, 'eo', { value: { clientIp: V6 }, enumerable: true });
+  const errRes = await onRequest({ request: errReq, params: {}, env: {}, waitUntil: () => {} });
+  const errBody = await errRes.text();
+  check('派生前提：4. 对 IPv6 连接返回 400 中文文案', errRes.status === 400 && /[一-龥]/.test(errBody));
   const { els } = await runPage({
     ['/4']: { body: errBody },
     ['/test']: { body: V4 + '\n' },
   });
-  check('中文错误：v4 状态显示原因分句', els['v4-status'].textContent === '当前通过 IPv6 连接', 'got: ' + els['v4-status'].textContent);
+  check('中文错误：v4 状态显示原因分句', els['v4-status'].textContent === errBody.split('，')[0], 'got: ' + els['v4-status'].textContent);
   check('中文错误：状态标 err', els['v4-status'].className === 'status err');
   check('中文错误：v4 字段不填充', !els['v4'] || els['v4'].textContent === '');
 }
