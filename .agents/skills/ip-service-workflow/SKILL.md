@@ -28,17 +28,13 @@ description: 'IP 查询服务（EdgeOne Makers Edge Functions）的开发、验�
 ## 开发与本地验证
 
 1. 修改 `edge-functions/` 前先阅读对应 Agent Note，确认行为变更是否需要更新笔记；共享函数集中在 `edge-functions/_shared.js`，两入口文件 import 使用，修改共享逻辑只改一处（见[客户端 IP 契约笔记](../../notes/implemented/architecture/2026-08-14-client-ip-acquisition-contract.md)）；浏览器脚本（`UI_SCRIPT` 在 `index.js`、`WEBRTC_SCRIPT` 在 `[[default]].js`）各留宿主文件。
-2. 语法与逻辑验证：`node --check edge-functions/index.js` 与 `node --check "edge-functions/[[default]].js"`，然后 `npm test`（全量本地门禁，构成以 `package.json` 的 `test` script 为权威）。
+2. 语法与逻辑验证：`node --check edge-functions/index.js`、`node --check "edge-functions/[[default]].js"` 与 `node --check edge-functions/_shared.js`，然后 `npm test`（全量本地门禁，构成以 `package.json` 的 `test` script 为权威）。
 3. 本地联调可 `edgeone makers dev`（8088 端口；路径端点见 [README 端点表](../../../README.md#endpoints)；无 `eo` 时回退代理头）。
 
 ## 部署
 
-```sh
-npm run deploy          # = edgeone makers deploy -a overseas（区域参数不持久化，必须携带）
-npm run deploy:preview  # 预览环境
-```
-
-部署输出包含默认域名与令牌 URL（默认域名受访问保护，浏览器打开后种 Cookie 方可访问）；绑定自定义域名后无需令牌。
+- **生产**：`git push origin main`——控制台 Git 集成触发平台侧构建发布（本项目为 GitHub Provider，CLI 直传会被平台拒绝，见[部署路径修正笔记](../../notes/implemented/process/2026-08-27-actions-removed-console-git-integration.md)）。
+- **冒烟/临时验证**（仅限 Upload Provider 的一次性项目）：`npx edgeone makers deploy -n <项目名> -a overseas`（`-a` 区域参数不持久化，必须携带）。默认域名受访问保护：先命中部署输出中的令牌 URL 种 Cookie（令牌 URL 会 302 到干净 URL），后续请求带 Cookie 访问；绑定自定义域名后无需令牌。
 
 ## 域名与站点设置
 

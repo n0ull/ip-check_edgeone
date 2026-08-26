@@ -6,8 +6,6 @@
   "description": "EdgeOne Makers 边缘函数实现的 IP 查询服务：4.ip/test.ip 子域名 + 查询网页（IPv6 地址由双栈测试派生）",
   "scripts": {
     "dev": "edgeone makers dev",
-    "deploy": "edgeone makers deploy -a overseas",
-    "deploy:preview": "edgeone makers deploy -e preview -a overseas",
     "test": "node test/simulate.mjs && node test/ui-dom.mjs && node test/webrtc-dom.mjs && node scripts/verify-agent-notes.mjs",
     "verify:notes": "node scripts/verify-agent-notes.mjs",
     "prepare": "node scripts/install-hooks.mjs"

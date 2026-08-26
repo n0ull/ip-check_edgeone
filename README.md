@@ -89,22 +89,24 @@ npm test
 
 ## 三、部署
 
-### 方式 A：本地 CLI 部署（主路径）
-
-```bash
-edgeone makers deploy -n ip-check -a overseas              # 生产环境（全球可用区，不含中国大陆）
-edgeone makers deploy -n ip-check -e preview -a overseas   # 预览环境
-```
-
-> ⚠️ **`-a` 区域参数不会持久化**，每次部署都必须携带（漏带回退 `global` 含中国大陆）；区域是部署时绑定属性，换区域会导致 CLI 另建同名项目（见[部署管理笔记](.agents/notes/implemented/process/2026-08-14-deployment-area-and-domain-management.md)）。已固化到 `npm run deploy` / `npm run deploy:preview`，更新代码后重新执行同一命令即增量发布。
-
-**默认域名访问保护**：CLI 直传项目的默认域名（`<项目名>-<随机串>.<区域后缀>`）默认开启访问保护，直接访问返回 401；用部署输出中携带 `eo_token`/`eo_time` 参数的 URL 访问一次，浏览器种下授权 Cookie 后即可正常访问。绑定自定义域名（第四节）后无需令牌，正式使用一律走自定义域名。
-
-### 方式 B：控制台 Git 集成（本项目实际使用）
+### 生产部署：推送即发布（控制台 Git 集成）
 
 项目 `ip-check` 为 GitHub Provider（经上方一键部署按钮以仓库为源创建）：**推送 main 即触发平台侧构建与生产发布**，构建日志在 Makers 控制台查看，仓库内无需任何 CI 工作流。
 
-> ⚠️ **Provider 约束**：GitHub Provider 的项目不支持 CLI/Actions 直传（`edgeone makers deploy` 会报 `Project ip-check exists but has Provider 'Github'`）。CLI 直传仅适用于 Upload Provider 项目（例如临时冒烟项目）。
+> ⚠️ **Provider 约束**：GitHub Provider 的项目不支持 CLI/Actions 直传（`edgeone makers deploy` 会报 `Project ip-check exists but has Provider 'Github'`）。本仓库曾内置的 Actions 工作流因此全部失败，已移除（见[部署路径修正笔记](.agents/notes/implemented/process/2026-08-27-actions-removed-console-git-integration.md)）。
+
+### 本地 CLI 直传（仅限 Upload Provider 项目，如临时冒烟）
+
+```bash
+edgeone makers deploy -n <项目名> -a overseas             # 生产环境（全球可用区，不含中国大陆）
+edgeone makers deploy -n <项目名> -e preview -a overseas  # 预览环境
+```
+
+适用于新建的一次性项目（如改动冒烟验证）；对 `ip-check` 不可用（Provider 冲突，见上）。
+
+> ⚠️ **`-a` 区域参数不会持久化**，每次 CLI 部署都必须携带（漏带回退 `global` 含中国大陆）；区域是部署时绑定属性，换区域会导致 CLI 另建同名项目（见[部署管理笔记](.agents/notes/implemented/process/2026-08-14-deployment-area-and-domain-management.md)）。
+
+**默认域名访问保护**：CLI 直传项目的默认域名（`<项目名>-<随机串>.<区域后缀>`）默认开启访问保护，直接访问返回 401；用部署输出中携带 `eo_token`/`eo_time` 参数的 URL 访问一次，浏览器种下授权 Cookie 后即可正常访问。绑定自定义域名（第四节）后无需令牌，正式使用一律走自定义域名。
 
 ## 四、域名与 DNS 配置（关键步骤）
 

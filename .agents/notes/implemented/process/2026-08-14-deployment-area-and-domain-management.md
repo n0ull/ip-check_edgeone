@@ -8,7 +8,7 @@ Status: implemented
 
 ## Decision
 
-- **部署命令固定携带 `-a overseas`**：`package.json` 的 `npm run deploy` / `deploy:preview` 已内嵌该参数，CLI 手输命令同样必须带；区域切换会造成 CLI 另建同名项目，旧项目需在控制台删除。当前活跃项目为 overseas 区域 Production 部署（项目 ID 见 Makers 控制台）。
+- **生产部署 = 推送 `main`**：项目 `ip-check` 为 GitHub Provider，控制台 Git 集成平台侧构建发布（见[部署路径修正笔记](2026-08-27-actions-removed-console-git-integration.md)）。CLI 直传（`edgeone makers deploy -n <项目名>`）仅适用于 Upload Provider 的一次性项目（如改动冒烟），且**固定携带 `-a overseas`**（区域参数不持久化，漏带即回退 global）；区域切换会造成 CLI 另建同名项目，旧项目需在控制台删除。当前活跃项目为 overseas 区域 Production 部署（项目 ID 见 Makers 控制台）。
 - **DNS 全部 CNAME**：`ip.`/`4.ip.`/`test.ip.` 三条记录指向 Makers 分配的 CNAME（形如 `*.pages.dnsoe*.com`）；Cloudflare 侧必须为 **DNS only（灰云）**——代理模式下 EdgeOne 看到的源地址是 CF 节点而非真实用户，IP 回显失真且多一跳。
 - **站点设置**：`4.` 关闭 IPv6 访问（强制仅 IPv4）、`ip.`/`test.` 开启；HTTP/2 全部开启；HTTPS 强制跳转 301；HSTS `max-age=31536000` 且 `includeSubDomains`（`preload` 关闭——提交 hstspreload 后极难撤回）；OCSP 装订开启。
 - **兜底预案**：若控制台只有项目级 IPv6 开关（无按域名独立开关），把 `4.` 拆到第二个 Makers 项目（项目级关 IPv6），`ip.`/`test.` 留原项目——CNAME 接入下跨项目零成本。

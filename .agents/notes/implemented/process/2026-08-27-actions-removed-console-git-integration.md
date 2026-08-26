@@ -20,3 +20,4 @@ Status: implemented
 
 推送 main 即生产发布的体验不变（平台侧构建），仓库不再产生 Actions 失败噪音；PR 预览评论能力随之移除（平台 Git 集成若提供预览部署，以其为准）。
 代价：部署过程不再在仓库内可审计（构建日志在 Makers 控制台）；仓库 secret `EDGEONE_API_TOKEN` 失去用途（可在 GitHub 仓库设置中删除）。
+同决策的连带清理：`package.json` 的 `deploy` / `deploy:preview` 脚本对本项目不可用（Provider 冲突）已移除；README 部署节重构为「推送即发布 + CLI 直传仅限 Upload Provider 项目」；AGENTS.md 与 SKILL.md 的部署描述同步。
