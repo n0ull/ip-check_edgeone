@@ -100,15 +100,11 @@ edgeone makers deploy -n ip-check -e preview -a overseas   # 预览环境
 
 **默认域名访问保护**：CLI 直传项目的默认域名（`<项目名>-<随机串>.<区域后缀>`）默认开启访问保护，直接访问返回 401；用部署输出中携带 `eo_token`/`eo_time` 参数的 URL 访问一次，浏览器种下授权 Cookie 后即可正常访问。绑定自定义域名（第四节）后无需令牌，正式使用一律走自定义域名。
 
-### 方式 B：GitHub Actions 自动部署
+### 方式 B：控制台 Git 集成（本项目实际使用）
 
-仓库已含两个工作流：`.github/workflows/deploy.yml`（push main → 部署生产环境）与 `.github/workflows/preview.yml`（开 PR → 检出 PR 头部代码部署预览环境，并在评论区附预览链接）。前置条件：仓库 secret `EDGEONE_API_TOKEN`（Makers 控制台生成，见 [API Token 文档](https://cloud.tencent.com/document/product/1552/127422)）。
-工作流不执行 `npm run build`：本项目无第三方依赖、无构建步骤，CLI 直接构建上传当前目录；`-a overseas` 已固化进工作流命令。决策记录见[CI/CD 笔记](.agents/notes/implemented/process/2026-08-14-github-actions-cicd.md)。
+项目 `ip-check` 为 GitHub Provider（经上方一键部署按钮以仓库为源创建）：**推送 main 即触发平台侧构建与生产发布**，构建日志在 Makers 控制台查看，仓库内无需任何 CI 工作流。
 
-### 其他方式
-
-- **Makers 控制台 Git 集成**（推送触发平台侧构建）与 **Token 直传**（`edgeone makers deploy ./dist -n ip-check -a overseas -t $EDGEONE_API_TOKEN`）均可用，步骤见[官方 CI 文档](https://cloud.tencent.com/document/product/1552/127398)。
-- ⚠️ **Provider 冲突**：CLI 直传只支持 Provider 为 Upload 的项目；同名项目若经一键部署按钮或控制台以 GitHub 仓库创建（Provider: Github），CLI 部署会报 `Project ip-check exists but has Provider 'Github'`。两种方式互斥：使用 Actions 时在控制台删除多余的 GitHub 集成项目；改用 Git 集成则删除 Actions 工作流并把自定义域名迁移到新项目。
+> ⚠️ **Provider 约束**：GitHub Provider 的项目不支持 CLI/Actions 直传（`edgeone makers deploy` 会报 `Project ip-check exists but has Provider 'Github'`）。CLI 直传仅适用于 Upload Provider 项目（例如临时冒烟项目）。
 
 ## 四、域名与 DNS 配置（关键步骤）
 

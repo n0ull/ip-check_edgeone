@@ -4,7 +4,7 @@ Status: implemented
 
 ## Problem
 
-[Agent Note 约定](2026-08-14-agent-note-conventions.md)与 [notes/README.md](../../README.md) 语言约定节的裁剪决策（不建三元组、门禁从简）引用了两个已失效的事实前提：「未纳入 git 版本管理」与「项目无 git 与 CI」。实际上仓库一直受 git 追踪，且随后接入了 [.githooks pre-commit](2026-08-15-pre-commit-gate.md) 与两个 GitHub Actions 工作流（见[CI/CD 笔记](2026-08-14-github-actions-cicd.md)）。前提失效使原理由不再成立：未来评审者会对着失效理由困惑，或机械执行「纳入 git 与 CI 后补三元组与完整门禁」的旧指引——前提消失不等于需求出现。
+[Agent Note 约定](2026-08-14-agent-note-conventions.md)与 [notes/README.md](../../README.md) 语言约定节的裁剪决策（不建三元组、门禁从简）引用了两个已失效的事实前提：「未纳入 git 版本管理」与「项目无 git 与 CI」。实际上仓库一直受 git 追踪，且随后接入了 [.githooks pre-commit](2026-08-15-pre-commit-gate.md) 与两个 GitHub Actions 工作流（见[CI/CD 笔记](../../archived/process/2026-08-14-github-actions-cicd.md)）。前提失效使原理由不再成立：未来评审者会对着失效理由困惑，或机械执行「纳入 git 与 CI 后补三元组与完整门禁」的旧指引——前提消失不等于需求出现。
 
 ## Decision
 

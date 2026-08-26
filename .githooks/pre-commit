@@ -4,4 +4,5 @@
 set -e
 node --check edge-functions/index.js
 node --check "edge-functions/[[default]].js"
+node --check edge-functions/_shared.js
 npm test

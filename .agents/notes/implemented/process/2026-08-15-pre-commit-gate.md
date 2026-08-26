@@ -4,12 +4,12 @@ Status: implemented
 
 ## Problem
 
-本地验证（语法检查、逻辑断言、双文件一致性、Agent Note 格式）此前全靠提交者自觉执行 `npm test`，漏跑则缺陷直达 push 甚至生产部署；GitHub Actions 工作流只部署、不含测试步骤，本地是最后一道可拦截的环节。
+本地验证（语法检查、逻辑断言、DOM 沙箱、Agent Note 格式）此前全靠提交者自觉执行 `npm test`，漏跑则缺陷直达 push 甚至生产部署；仓库无 CI 测试环节（生产部署由控制台 Git 集成承担，只构建不测试——见[部署路径修正笔记](2026-08-27-actions-removed-console-git-integration.md)），本地钩子是唯一拦截环节。
 
 ## Decision
 
-仓库内置 `.githooks/pre-commit`（POSIX sh）：依次执行 `node --check` 两个函数文件与 `npm test` 全量门禁（构成以 `package.json` 的 `test` script 为权威，机制见[测试门禁笔记](../../archived/testing/2026-08-15-dual-inline-consistency-and-test-gates.md)），任一失败即阻断提交。
-启用方式为 `git config core.hooksPath .githooks`，由 `scripts/install-hooks.mjs`（挂在 npm `prepare` 钩子）在 `npm install` 时自动执行；无 git 或非仓库环境（CI 纯部署、Makers 一键部署）静默跳过、不阻断安装。手工启用命令记录在 README 的本地调试一节。
+仓库内置 `.githooks/pre-commit`（POSIX sh）：依次执行 `node --check` 两个入口文件与 `_shared.js`，然后 `npm test` 全量门禁（构成以 `package.json` 的 `test` script 为权威），任一失败即阻断提交。
+启用方式为 `git config core.hooksPath .githooks`，由 `scripts/install-hooks.mjs`（挂在 npm `prepare` 钩子）在 `npm install` 时自动执行；无 git 或非仓库环境（如 Makers 一键部署的构建环境）静默跳过、不阻断安装。手工启用命令记录在 README 的本地调试一节。
 
 ## Alternatives considered
 

@@ -2,6 +2,8 @@
 
 Status: implemented
 
+Archived: 2026-08-27
+
 ## Problem
 
 部署依赖本地 CLI 与登录态，且 `-a overseas` 区域参数不持久化、漏带即回退 global（见[部署区域笔记](2026-08-14-deployment-area-and-domain-management.md)）。
