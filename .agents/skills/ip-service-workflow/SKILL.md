@@ -21,7 +21,7 @@ description: 'IP 查询服务（EdgeOne Makers Edge Functions）的开发、验�
 
 1. 实现：代码 + 测试断言 + Agent Note（非平凡变更强制，见 [notes/README.md](../../notes/README.md)）。
 2. 门禁全绿（语法 + `npm test`，细则见下节）。
-3. **审查（提交前）**：/code-review 双轴审查（Standards + Spec）；有发现先修再提交。纯文档/注释编辑豁免。子代理默认模型失效时走 workflow 显式指定 provider/model（当前约定 kimi-coding / kimi-for-coding，见[主流程笔记](../../notes/implemented/process/2026-08-26-workflow-main-flow.md)）。
+3. **审查（提交前）**：/code-review 双轴审查（Standards + Spec）；有发现先修再提交。纯文档/注释编辑豁免。审查代理用普通子代理即可；若子代理默认模型再次失效，回退通道为 workflow 显式指定 provider/model（kimi-coding / kimi-for-coding，见[主流程笔记](../../notes/implemented/process/2026-08-26-workflow-main-flow.md)）。
 4. 提交；pre-commit 钩子自动复检门禁。
 5. 部署并线上验证（见『部署』『线上排查』）。
 

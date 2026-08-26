@@ -13,7 +13,7 @@ Status: implemented
 - **六步顺序**：定形（功能/架构级改动先 grilling 或架构评审）→ 实现（代码 + 测试断言 + Agent Note）→ 门禁（node --check + npm test）→ **/code-review 双轴审查（提交前）** → 提交（pre-commit 复检）→ 部署与线上验证。
 - **审查豁免边界**：纯文档/注释级编辑可跳过审查（与 notes 契约的机械编辑豁免对齐）。
 - **双轨归一**：.agents/notes/ 是本仓库唯一决策/ADR 库；Matt 系技能（domain-modeling 等）的决策记录写 Agent Note，不创建 docs/adr/；该规则写入 docs/agents/domain.md 供技能消费。CONTEXT.md 术语表保持惰性创建。
-- **审查通道**：子代理默认模型（opencodezen / x-preview-f-free）已失效（环境事实）；审查代理经 workflow 显式指定 provider/model，当前约定 kimi-coding / kimi-for-coding。子代理默认模型修复后本约定可回退。
+- **审查通道**：普通子代理。子代理默认模型曾于 2026-08-26 失效（opencodezen / x-preview-f-free，环境层面），同日修复并经连通性冒烟验证；若再次失效，回退通道为 workflow 显式指定 provider/model（kimi-coding / kimi-for-coding）。
 
 ## Alternatives considered
 
