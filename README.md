@@ -40,6 +40,7 @@ ip-check/
 ├── edgeone.json            # Makers 项目配置（默认空即可）
 ├── package.json
 ├── edge-functions/
+│   ├── _shared.js          # 共享工具函数与端点处理器（index.js / [[default]].js 共用）
 │   ├── index.js            # 匹配 "/"：查询网页 + 按 Host 分发 4./test.
 │   └── [[default]].js      # 匹配其余路径：/4 /test /api/* 等路径式端点
 ├── .githooks/
@@ -51,9 +52,8 @@ ip-check/
     ├── simulate.mjs        # Host 分发与路径端点逻辑断言
     ├── ui-dom.mjs          # 主页脚本（UI_SCRIPT）的 DOM 沙箱测试
     ├── webrtc-dom.mjs      # WebRTC 页脚本（WEBRTC_SCRIPT）的 DOM 沙箱测试
-    ├── helpers/
-    │   └── dom-sandbox.mjs # 两个 DOM 沙箱测试共享的 mock/vm 助手
-    └── consistency.mjs     # 双文件内联函数一致性校验
+    └── helpers/
+        └── dom-sandbox.mjs # 两个 DOM 沙箱测试共享的 mock/vm 助手
 ```
 
 本项目是**完整的可部署项目**：`ip-check` 已存在于 Makers 控制台，本目录即项目根，无需执行 `create`/`init`。目录结构参考官方模板 [functions-fetch](https://github.com/TencentEdgeOne/pages-templates)（纯 Edge Functions + 静态托管），去掉了框架部分。

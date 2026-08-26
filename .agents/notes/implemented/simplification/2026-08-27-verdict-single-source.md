@@ -23,5 +23,5 @@ Status: implemented
 
 ## Consequences
 
-措辞契约从 4 处收敛到 1 张表：改措辞只改 `verdictFor` 一处实现 + 一处纯函数断言；浏览器与服务端在构造上不可能再分叉。`familyOf` 是交集门禁（见[一致性笔记](../testing/2026-08-15-dual-inline-consistency-and-test-gates.md)）自动纳管的第一个新共享函数。
+措辞契约从 4 处收敛到 1 张表：改措辞只改 `verdictFor` 一处实现 + 一处纯函数断言；浏览器与服务端在构造上不可能再分叉。`familyOf` 是交集门禁（见[一致性笔记](../../archived/testing/2026-08-15-dual-inline-consistency-and-test-gates.md)）自动纳管的第一个新共享函数。
 代价：`UI_SCRIPT` 序列化清单变长（8 个函数）；`verdictFor`/`familyOf` 需保持浏览器兼容写法（ES5 风格）；序列化函数的依赖必须一并入清单（本次 `isIpv6` 漏列曾在门禁中当场暴露）。

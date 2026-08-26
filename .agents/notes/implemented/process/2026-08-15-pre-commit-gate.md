@@ -8,7 +8,7 @@ Status: implemented
 
 ## Decision
 
-仓库内置 `.githooks/pre-commit`（POSIX sh）：依次执行 `node --check` 两个函数文件与 `npm test` 全量门禁（构成以 `package.json` 的 `test` script 为权威，机制见[测试门禁笔记](../testing/2026-08-15-dual-inline-consistency-and-test-gates.md)），任一失败即阻断提交。
+仓库内置 `.githooks/pre-commit`（POSIX sh）：依次执行 `node --check` 两个函数文件与 `npm test` 全量门禁（构成以 `package.json` 的 `test` script 为权威，机制见[测试门禁笔记](../../archived/testing/2026-08-15-dual-inline-consistency-and-test-gates.md)），任一失败即阻断提交。
 启用方式为 `git config core.hooksPath .githooks`，由 `scripts/install-hooks.mjs`（挂在 npm `prepare` 钩子）在 `npm install` 时自动执行；无 git 或非仓库环境（CI 纯部署、Makers 一键部署）静默跳过、不阻断安装。手工启用命令记录在 README 的本地调试一节。
 
 ## Alternatives considered

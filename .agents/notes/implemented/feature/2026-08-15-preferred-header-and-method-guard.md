@@ -9,7 +9,7 @@ Status: implemented
 
 ## Decision
 
-两处收紧（`index.js` 与 `[[default]].js` 双份内联同步，由[一致性校验](../testing/2026-08-15-dual-inline-consistency-and-test-gates.md)机械防漂移）：
+两处收紧（`index.js` 与 `[[default]].js` 双份内联同步，由[一致性校验](../../archived/testing/2026-08-15-dual-inline-consistency-and-test-gates.md)机械防漂移）：
 
 - **响应头对齐**：`handleTest` 的 `x-ip-preferred` 与 JSON 的 `ipv6Preferred` 执行同一规则——仅当本次连接确为 IPv6 时输出 `x-ip-preferred: IPv6`；IPv4 连接不输出该头（头部缺失即『无法判定』，而非显式否定）。`x-ip-family` 不变，两种协议族均输出；
 - **方法门禁**：共享函数 `methodGuard(request)`（两文件内联同一实现）先检查 `request.method`，非 GET/HEAD 一律返回 405（纯文本 `仅支持 GET/HEAD 请求。` + `Allow: GET, HEAD` 头），放行返回 `null`；两个 `onRequest` 入口首先调用它，先于 Host 分发与路径路由生效。具名化使其随交集推导自动纳入一致性门禁（初版为匿名块内联，曾不受门禁覆盖）。

@@ -26,7 +26,7 @@ Status: implemented
 
 ## Consequences
 
-- 转义方言 bug 类在构造上消失：浏览器代码按正常 JS 书写，语法由 `node --check` 与模块 import 直接把关；[WebRTC 笔记](../feature/2026-08-14-webrtc-leak-check.md)的转义维护要点与[一致性笔记](../testing/2026-08-15-dual-inline-consistency-and-test-gates.md)中主页 `new Function` 冒烟断言随之退役（两篇均已原地更新事实并回本链接）。
+- 转义方言 bug 类在构造上消失：浏览器代码按正常 JS 书写，语法由 `node --check` 与模块 import 直接把关；[WebRTC 笔记](../feature/2026-08-14-webrtc-leak-check.md)的转义维护要点与[一致性笔记](../../archived/testing/2026-08-15-dual-inline-consistency-and-test-gates.md)中主页 `new Function` 冒烟断言随之退役（两篇均已原地更新事实并回本链接）。
 - 主页回退/判定逻辑首次获得执行级测试（此前仅有语法冒烟，从未运行）；测试与实现在 seam（SCRIPT 值）处对接，不再刮取 HTML 字符串。
 - 代价与回评条件：两文件模块顶层出现『服务端不执行』的函数（已有注释标明）；`UI_SCRIPT`/`WEBRTC_SCRIPT` 成为新导出面（EdgeOne 仅消费 `onRequest`，额外导出惰性——若平台未来校验导出白名单需回评）；`toString()` 序列化依赖『无构建步骤』定案，引入打包器/压缩器即需回评。
 - 后续已闭环：`6.` 兼容面由[移除 6. 兼容面笔记](2026-08-26-remove-v6-compat-surface.md)删除；`/webrtc` 判定分支补齐四路径覆盖（无泄漏 / 泄漏 / 无公网映射 / 无出口，见 `test/webrtc-dom.mjs`）。

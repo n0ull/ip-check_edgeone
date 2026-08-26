@@ -1,12 +1,15 @@
 # Agent Note: 双文件一致性校验与测试门禁整合
 
 Status: implemented
+Archived: 2026-08-27
+
+> 共享模块提取（_shared.js）后双份内联消失，consistency.mjs 退役，本节守护的机制不复存在；作为历史快照冻结。
 
 ## Problem
 
-[客户端 IP 契约](../architecture/2026-08-14-client-ip-acquisition-contract.md)要求 `index.js` 与 `[[default]].js` 双份内联同一实现、『改一必改二』，但该约束此前只有人工约定，且漂移已实际发生：`handleV4`/`handleV6` 的错误文案两文件曾不一致（详细版与简短版并存）。
+[客户端 IP 契约](../../implemented/architecture/2026-08-14-client-ip-acquisition-contract.md)要求 `index.js` 与 `[[default]].js` 双份内联同一实现、『改一必改二』，但该约束此前只有人工约定，且漂移已实际发生：`handleV4`/`handleV6` 的错误文案两文件曾不一致（详细版与简短版并存）。
 测试同时存在缺口：主页 UI 的内嵌 JS 只断言字符串包含、无语法有效性校验（`/webrtc` 页有，主页没有，而两者同样受外层字符串消化转义的影响）；`Accept: application/json` 协商路径无断言；`verify:notes` 游离于 `npm test` 之外，提交前可能漏跑。
-后续走查又发现门禁自身的两个缺口：方法门禁以匿名块双份内联于两个 `onRequest` 体内，不是具名函数、不在比对清单内，完全不受机械保护（与[方法门禁笔记](../feature/2026-08-15-preferred-header-and-method-guard.md)的声称不符）；SHARED 清单本身是『哪些函数共享』的第二份手工拷贝，漏加即静默失保（新增共享函数需人肉记得登记，该负担曾被列入本节代价）。
+后续走查又发现门禁自身的两个缺口：方法门禁以匿名块双份内联于两个 `onRequest` 体内，不是具名函数、不在比对清单内，完全不受机械保护（与[方法门禁笔记](../../implemented/feature/2026-08-15-preferred-header-and-method-guard.md)的声称不符）；SHARED 清单本身是『哪些函数共享』的第二份手工拷贝，漏加即静默失保（新增共享函数需人肉记得登记，该负担曾被列入本节代价）。
 
 ## Decision
 

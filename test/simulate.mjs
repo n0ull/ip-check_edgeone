@@ -21,6 +21,7 @@ for (const f of ['index.js', '[[default]].js']) {
 
 const indexMod = await import(pathToFileURL(path.join(root, 'edge-functions', 'index.js')).href);
 const catchAllMod = await import(pathToFileURL(path.join(root, 'edge-functions', '[[default]].js')).href);
+const sharedMod = await import(pathToFileURL(path.join(root, 'edge-functions', '_shared.js')).href);
 
 let passed = 0;
 let failed = 0;
@@ -156,9 +157,9 @@ await section('[[default]].js · 路径端点', async () => {
 
 // ---------- familyOf / verdictFor：措辞契约单点的纯函数断言 ----------
 await section('familyOf / verdictFor 纯函数', async () => {
-  check('familyOf IPv4', indexMod.familyOf('1.2.3.4') === 'IPv4');
-  check('familyOf IPv6', indexMod.familyOf('240e:390:abcd:1234::1') === 'IPv6');
-  check('familyOf 空输入 → null', indexMod.familyOf('') === null && indexMod.familyOf(null) === null);
+  check('familyOf IPv4', sharedMod.familyOf('1.2.3.4') === 'IPv4');
+  check('familyOf IPv6', sharedMod.familyOf('240e:390:abcd:1234::1') === 'IPv6');
+  check('familyOf 空输入 → null', sharedMod.familyOf('') === null && sharedMod.familyOf(null) === null);
   const v6 = indexMod.verdictFor('IPv6');
   const v4 = indexMod.verdictFor('IPv4');
   check('verdictFor IPv6（文案+完整 className）', !!v6 && v6.text === 'IPv6 访问优先' && v6.cls === 'badge ipv6');
