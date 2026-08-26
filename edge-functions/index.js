@@ -43,7 +43,7 @@ function getClientIp(request) {
   return '';
 }
 
-/** 解析请求 Host，识别子域名（4 / 6 / test）与基础域名 */
+/** 解析请求 Host，识别子域名（4 / test）与基础域名 */
 function hostInfo(request) {
   let hostname = '';
   try { hostname = new URL(request.url).hostname; } catch (_) { /* ignore */ }
