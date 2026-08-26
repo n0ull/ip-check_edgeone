@@ -7,7 +7,7 @@
 - **部署必须带 `-a overseas`**（区域参数不持久化，漏带回退 global；区域不可变，换区域须删项目重建）；DNS 全 CNAME 且 Cloudflare 灰云；`4.` 站点关 IPv6。[管理](.agents/notes/implemented/process/2026-08-14-deployment-area-and-domain-management.md)
 - **语义措辞严谨**：IPv4 连接只称『连接』不称『优先』；`ipv6Preferred` 仅在 IPv6 时输出。[语义](.agents/notes/implemented/feature/2026-08-14-protocol-family-semantics.md)
 - **非平凡变更必须携带 Agent Note**（格式契约见 [.agents/notes/README.md](.agents/notes/README.md)，机械校验 `npm run verify:notes`）；修改函数行为后同步更新测试断言与 [README.md](README.md)。
-- **开发验证**：`npm test`（simulate 逻辑断言 + ui-dom/webrtc-dom 沙箱 + consistency 双文件一致性 + verify:notes）+ `node --check` 两个函数文件；pre-commit 钩子自动执行（`npm install` 启用）；部署用 `npm run deploy`。[工作流](.agents/skills/ip-service-workflow/SKILL.md)
+- **开发验证**：`npm test`（simulate 逻辑断言 + ui-dom/webrtc-dom 沙箱 + consistency 双文件一致性 + verify:notes）+ `node --check` 两个函数文件；**提交前 /code-review 双轴审查**（纯文档编辑豁免）；pre-commit 钩子自动执行（`npm install` 启用）；部署用 `npm run deploy`。[工作流](.agents/skills/ip-service-workflow/SKILL.md)
 
 ## Agent skills
 
@@ -21,4 +21,4 @@ Issues 与 spec 存放于本仓库的 GitHub Issues，通过 `gh` CLI 操作。�
 
 ### Domain docs
 
-单上下文（single-context）布局：根目录 `CONTEXT.md` + `docs/adr/`，按需惰性创建。详见 `docs/agents/domain.md`。
+决策与 ADR 一律写 `.agents/notes/`（本仓库不用 `docs/adr/`）；`CONTEXT.md` 术语表按需惰性创建。详见 `docs/agents/domain.md`。

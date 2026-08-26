@@ -10,6 +10,10 @@ How the engineering skills should consume this repo's domain documentation when 
 
 If any of these files don't exist, **proceed silently**. Don't flag their absence; don't suggest creating them upfront. The `/domain-modeling` skill (reached via `/grill-with-docs` and `/improve-codebase-architecture`) creates them lazily when terms or decisions actually get resolved.
 
+## 本仓库特化：决策库是 `.agents/notes/`
+
+本仓库不采用 `docs/adr/`：决策与 ADR 一律写入 `.agents/notes/`（Agent Note，格式契约与机械校验见 `.agents/notes/README.md`）。domain-modeling 等技能产生决策记录时创建 Agent Note，不创建 `docs/adr/`。`CONTEXT.md` 术语表规则不变（惰性创建）。
+
 ## File structure
 
 Single-context repo (most repos):

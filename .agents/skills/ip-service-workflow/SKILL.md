@@ -1,6 +1,6 @@
 ---
 name: ip-service-workflow
-description: 'IP 查询服务（EdgeOne Makers Edge Functions）的开发、验证、部署与线上排查工作流——修改 edge-functions/ 代码、运行本地测试、部署到 overseas 区域、绑定自定义域名与站点设置、排查 curl/网页访问异常时使用，或请求如 "部署" "更新函数" "curl 无返回" "域名配置" 时。'
+description: 'IP 查询服务（EdgeOne Makers Edge Functions）的开发、验证、部署与线上排查工作流——修改 edge-functions/ 代码、运行本地测试、部署到 overseas 区域、绑定自定义域名与站点设置、排查 curl/网页访问异常时使用，或请求如 "部署" "更新函数" "提交" "curl 无返回" "域名配置" 时。'
 ---
 
 # IP 查询服务工作流
@@ -14,6 +14,16 @@ description: 'IP 查询服务（EdgeOne Makers Edge Functions）的开发、验�
 - [部署与域名笔记](../../notes/implemented/process/2026-08-14-deployment-area-and-domain-management.md) —— 区域参数、CNAME、站点开关、兜底预案。
 - [架构笔记](../../notes/implemented/architecture/2026-08-14-platform-constraints-and-three-domain-design.md) —— 三域名设计、6. 子域为何不存在。
 - [README.md](../../../README.md) —— 部署手册与端点表。
+
+## 变更主流程
+
+功能/架构级改动先经 /grill-with-docs 或 /improve-codebase-architecture 定案；小改动直接实现。顺序：
+
+1. 实现：代码 + 测试断言 + Agent Note（非平凡变更强制，见 [notes/README.md](../../notes/README.md)）。
+2. 门禁全绿（语法 + `npm test`，细则见下节）。
+3. **审查（提交前）**：/code-review 双轴审查（Standards + Spec）；有发现先修再提交。纯文档/注释编辑豁免。子代理默认模型失效时走 workflow 显式指定 provider/model（当前约定 kimi-coding / kimi-for-coding，见[主流程笔记](../../notes/implemented/process/2026-08-26-workflow-main-flow.md)）。
+4. 提交；pre-commit 钩子自动复检门禁。
+5. 部署并线上验证（见『部署』『线上排查』）。
 
 ## 开发与本地验证
 
