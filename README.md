@@ -84,7 +84,7 @@ edgeone makers dev
 npm test
 ```
 
-> `npm test` 一次跑完五道校验：逻辑断言（`test/simulate.mjs`）、主页脚本 DOM 沙箱（`test/ui-dom.mjs`）、WebRTC 页 DOM 沙箱（`test/webrtc-dom.mjs`）、双文件内联一致性（`test/consistency.mjs`）、Agent Note 格式（`scripts/verify-agent-notes.mjs`）。
+> `npm test` 一次跑完全部本地门禁（逻辑断言、双页 DOM 沙箱、双文件内联一致性、Agent Note 格式等；构成以 `package.json` 的 `test` script 为权威）。
 > 仓库内置 pre-commit 钩子（`.githooks/pre-commit`）：`npm install` 时自动执行 `git config core.hooksPath .githooks` 启用，提交前自动执行语法检查与 `npm test`；未跑过 `npm install` 可手工执行该命令。
 
 ## 三、部署
@@ -136,6 +136,8 @@ test.ip.example.com
 | `ip.example.com` | 开 | 开 | 双栈网页 |
 | `4.ip.example.com` | **关** | 开 | **强制仅 IPv4 可达**，curl 必返 IPv4 |
 | `test.ip.example.com` | 开 | 开 | 双栈测试 |
+
+三个域名统一开启：HTTPS 强制跳转（301）、HSTS（`max-age=31536000` + `includeSubDomains`，preload 关）、OCSP 装订。
 
 > 若控制台只有项目级 IPv6 开关：关闭项目 IPv6 会使三个域名全部变为仅 IPv4，`test.` 失去 IPv6 能力。原则：`4.` 的 IPv4 语义优先保证，`test.` 的 IPv6 判定能力次之（可将 `4.` 拆到第二个 Makers 项目）。
 

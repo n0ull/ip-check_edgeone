@@ -14,7 +14,7 @@ Status: implemented
 - **受检集合自动推导**（取代初版的手工 SHARED 清单）：扫描两文件顶层 `function` 声明（正则严格行首锚定，嵌套函数因缩进不匹配），取交集减去显式例外 `onRequest`（唯一合法的同名不同体函数，两文件各自入口）；比对从声明起点开始、含 `export`/`async` 修饰符，修饰符漂移同样判不一致。新增共享函数自动纳入门禁；交集清单打印在测试日志供扫视，空交集硬断言失败以防静默通过；漏加例外的失效方向是误报（吵）而非漏保（静）；
 - 方法门禁为具名共享函数 `methodGuard(request) → Response | null`（判断、文案、`Allow` 头内聚），两个 `onRequest` 入口首先调用——此前它以匿名块双份内联、不在门禁内，具名化后自动落入交集受检；
 - `test/simulate.mjs` 补充 `Accept: application/json` 协商断言与两个 405 方法门禁断言（主页 UI 的 `new Function` 语法冒烟断言已随[浏览器脚本即真实函数](../simplification/2026-08-26-browser-js-as-real-functions.md)退役——脚本改为真实函数后，语法由模块 import 与 `node --check` 直接保证）；
-- `npm test` 串起全部本地验证：`simulate.mjs` → `ui-dom.mjs` → `webrtc-dom.mjs` → `consistency.mjs` → `verify-agent-notes.mjs`（`ui-dom.mjs` 后增，见[浏览器脚本即真实函数](../simplification/2026-08-26-browser-js-as-real-functions.md)），一个命令即完整门禁，同时挂入 pre-commit 钩子（见[提交前预检笔记](../process/2026-08-15-pre-commit-gate.md)）。
+- `npm test` 串起全部本地验证（构成以 `package.json` 的 `test` script 为权威），一个命令即完整门禁，同时挂入 pre-commit 钩子（见[提交前预检笔记](../process/2026-08-15-pre-commit-gate.md)）。
 
 ## Alternatives considered
 

@@ -28,8 +28,8 @@ description: 'IP 查询服务（EdgeOne Makers Edge Functions）的开发、验�
 ## 开发与本地验证
 
 1. 修改 `edge-functions/` 前先阅读对应 Agent Note，确认行为变更是否需要更新笔记；`getClientIp` 与响应工具函数在 `index.js` 与 `[[default]].js` 双份内联，改一必改二。
-2. 语法与逻辑验证：`node --check edge-functions/index.js` 与 `node --check "edge-functions/[[default]].js"`，然后 `npm test`（`test/simulate.mjs` 逻辑断言 + `test/ui-dom.mjs` 主页脚本 DOM 沙箱 + `test/webrtc-dom.mjs` WebRTC 页 DOM 沙箱 + `test/consistency.mjs` 双文件一致性 + `verify-agent-notes.mjs` 笔记格式）。
-3. 本地联调可 `edgeone makers dev`（8088 端口，`/4` `/6` `/test` 路径端点；无 `eo` 时回退代理头）。
+2. 语法与逻辑验证：`node --check edge-functions/index.js` 与 `node --check "edge-functions/[[default]].js"`，然后 `npm test`（全量本地门禁，构成以 `package.json` 的 `test` script 为权威）。
+3. 本地联调可 `edgeone makers dev`（8088 端口；路径端点见 [README 端点表](../../../README.md#endpoints)；无 `eo` 时回退代理头）。
 
 ## 部署
 
@@ -42,9 +42,7 @@ npm run deploy:preview  # 预览环境
 
 ## 域名与站点设置
 
-- DNS（Cloudflare）：`ip.`/`4.ip.`/`test.ip.` 全部 **CNAME** 且 **DNS only（灰云）**——橙云代理会使 `request.eo.clientIp` 拿到 CF 节点地址，IP 回显失真。
-- 站点设置：`4.` 关 IPv6 访问（强制仅 IPv4）、`ip.`/`test.` 开；HTTP/2 开；HTTPS 跳转 301；HSTS `max-age=31536000` + `includeSubDomains`（preload 关）；OCSP 装订开。
-- 若控制台只有项目级 IPv6 开关：`4.` 拆第二个 Makers 项目，`ip.`/`test.` 留原项目。
+以[部署与域名笔记](../../notes/implemented/process/2026-08-14-deployment-area-and-domain-management.md)为唯一权威（DNS 全 CNAME 灰云、站点开关、HSTS/OCSP、项目级 IPv6 开关兜底预案）；操作前读取该笔记，不在此重新枚举。
 
 ## 线上排查
 
