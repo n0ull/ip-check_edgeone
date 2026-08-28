@@ -12,8 +12,17 @@
  * 本文件不导出 onRequest，构建器的 isPagesFunction 会将其过滤，不会注册为路由。
  */
 
-function isIpv4(ip) {
-  return typeof ip === 'string' && /^(\d{1,3}\.){3}\d{1,3}$/.test(ip);
+/** IPv4 严格判定：四段十进制，每段 0-255，无前导垃圾字符。拒绝 256.1.1.1 等越界输入 */
+export function isIpv4(ip) {
+  if (typeof ip !== 'string') return false;
+  const parts = ip.split('.');
+  if (parts.length !== 4) return false;
+  return parts.every((p) => {
+    if (p.length === 0 || p.length > 3) return false;
+    for (let i = 0; i < p.length; i++) { if (p[i] < '0' || p[i] > '9') return false; }
+    const n = parseInt(p, 10);
+    return n >= 0 && n <= 255;
+  });
 }
 
 export function isIpv6(ip) {

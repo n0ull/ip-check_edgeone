@@ -13,7 +13,7 @@
  * 注意：curl 4.ip.<domain> / test.ip.<domain>（根路径）由 index.js 按 Host 分发；不再提供 6. 子域。
  */
 
-import { getClientIp, methodGuard, handleV4, handleTest, familyOf, jsonResponse, baseHeaders } from './_shared.js';
+import { getClientIp, isIpv4, methodGuard, handleV4, handleTest, familyOf, jsonResponse, baseHeaders } from './_shared.js';
 
 /* ——— /webrtc 页内嵌浏览器脚本（服务端不执行）：以下为浏览器端代码，以真实函数书写，———
    ——— 模块加载时经 Function.prototype.toString() 序列化为 WEBRTC_SCRIPT 注入页面。———
@@ -23,7 +23,7 @@ function $(id) { return document.getElementById(id); }
 function addIp(arr, ip) { if (ip && arr.indexOf(ip) < 0) arr.push(ip); }
 
 function isPublicIp(ip) {
-  return /^(\d{1,3}\.){3}\d{1,3}$/.test(ip)
+  return isIpv4(ip)
     ? !/^(10\.|127\.|169\.254\.|192.168\.|172\.(1[6-9]|2[0-9]|3[01])\.)/.test(ip)
     : !/^f[cd][0-9a-f]{2}:|^fe80:/.test(ip);
 }
@@ -33,7 +33,7 @@ function extractIp(line) {
   for (var i = 0; i < toks.length; i++) {
     var t = toks[i];
     if (!t || t === '0.0.0.0' || t === '::') continue;
-    if (/^(\d{1,3}\.){3}\d{1,3}$/.test(t)) return t;
+    if (isIpv4(t)) return t;
     if (t.indexOf(':') !== -1 && /^[0-9a-f:.]+$/i.test(t) && (t.indexOf('::') !== -1 || t.split(':').length >= 4)) return t;
   }
   return null;
@@ -79,7 +79,7 @@ async function run() {
 }
 
 /** /webrtc 页脚本值：浏览器函数序列化拼接（页面无占位符） */
-export const WEBRTC_SCRIPT = [$, addIp, isPublicIp, extractIp, detect, fetchIp, run].map((f) => f.toString()).join('\n') + "\n$('run').addEventListener('click', run);";
+export const WEBRTC_SCRIPT = [$, addIp, isIpv4, isPublicIp, extractIp, detect, fetchIp, run].map((f) => f.toString()).join('\n') + "\n$('run').addEventListener('click', run);";
 
 /** WebRTC 检查页：纯浏览器端检测（RTCPeerConnection + ICE candidates），结果不发送到服务器；页面无动态占位符，模块加载时构建一次 */
 const WEBRTC_HTML = (() => {

@@ -167,5 +167,20 @@ await section('familyOf / verdictFor 纯函数', async () => {
   check('verdictFor 未知 → null（第三态留调用点）', indexMod.verdictFor('未知') === null && indexMod.verdictFor('unknown') === null);
 });
 
+// ---------- isIpv4：严格四段 0-255 判定（破坏性变更：256.x.x.x 等越界输入现返回 false）----------
+await section('isIpv4 严格判定', async () => {
+  check('isIpv4 合法 IPv4', sharedMod.isIpv4('1.2.3.4') === true);
+  check('isIpv4 全 255', sharedMod.isIpv4('255.255.255.255') === true);
+  check('isIpv4 全 0', sharedMod.isIpv4('0.0.0.0') === true);
+  check('isIpv4 首段 256 → false（越界）', sharedMod.isIpv4('256.1.1.1') === false);
+  check('isIpv4 全 999 → false（越界）', sharedMod.isIpv4('999.999.999.999') === false);
+  check('isIpv4 三段 → false（段数不足）', sharedMod.isIpv4('1.2.3') === false);
+  check('isIpv4 五段 → false（段数过多）', sharedMod.isIpv4('1.2.3.4.5') === false);
+  check('isIpv4 非 IP 文本 → false', sharedMod.isIpv4('foo.bar') === false);
+  check('isIpv4 空串 → false', sharedMod.isIpv4('') === false);
+  check('isIpv4 null → false', sharedMod.isIpv4(null) === false);
+  check('isIpv4 IPv6 → false', sharedMod.isIpv4('240e:390:abcd:1234::1') === false);
+});
+
 console.log('\n结果: ' + passed + ' 通过, ' + failed + ' 失败');
 process.exit(failed === 0 ? 0 : 1);
