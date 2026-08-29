@@ -90,12 +90,14 @@ await section('index.js · Host 分发', async () => {
   r = await call(indexMod, 'ip.example.com', '/', { eo: eo4 });
   check('ip. 返回 HTML UI', r.res.status === 200 && (r.res.headers.get('content-type') || '').includes('text/html') && r.body.includes('IP 查询'), 'ct=' + r.res.headers.get('content-type'));
   check('UI 极简结构（三字段，无本页连接行）', r.body.includes('IPv4 地址') && r.body.includes('IPv6 地址') && r.body.includes('双栈测试') && !r.body.includes('本页连接'));
-  check('UI 字段垂直堆叠布局（label 上、值下）', r.body.includes('class="field"') && r.body.includes('class="lbl"'));
-  check('UI 去除装饰（无 emoji 标题与卡片）', !r.body.includes('🌐') && !r.body.includes('class="card"'));
+  check('UI 去除装饰（无 emoji）', !r.body.includes('🌐'));
   check('UI 注入 BASE 域名', r.body.includes('ip.example.com'));
   check('UI 服务端即时判定（IPv4 连接，非“优先”）', r.body.includes('IPv4 连接') && !r.body.includes('IPv4 访问优先'));
+  // id="hint" 存在性是承重断言：dom-sandbox 自动补建元素，ui-dom 无法发现模板缺元素，此为唯一守卫
   check('UI 含提示条元素', r.body.includes('id=\"hint\"'));
-  check('UI 嵌入脚本值（renderUi 与 UI_SCRIPT 集成）', r.body.includes(indexMod.UI_SCRIPT.split('__BASE__').join('ip.example.com')));
+  check('UI 嵌入脚本值（renderUi 与 uiScriptFor 集成）', r.body.includes(indexMod.uiScriptFor('ip.example.com')));
+  // 钉住净化白名单本身：若未来字符集扩入 esc 可转义字符，esc∘sanitize 将不再恒等，此断言当场红
+  check('uiScriptFor 净化恶意 base（白名单守卫）', indexMod.uiScriptFor('ip.example.com/&<>"').includes("init('ip.example.com')"));
   check('UI 判定措辞严谨（IPv4 连接/无法判定）', r.body.includes('IPv4 连接') && r.body.includes('无法判定 IPv6 是否存在') && !r.body.includes('IPv4 访问优先'));
   check('主页含 WebRTC 检查入口', r.body.includes('/webrtc'));
 

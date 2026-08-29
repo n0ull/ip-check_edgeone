@@ -3,13 +3,13 @@
  * 双栈成功 / 同源回退 / IPv4 连接判定 / 中文错误原因；并断言抓取日志不请求 6. 子域。
  * 用法：node test/ui-dom.mjs
  */
-import { UI_SCRIPT, onRequest } from '../edge-functions/index.js';
+import { uiScriptFor, onRequest } from '../edge-functions/index.js';
 import { makeDom, runScript, checker } from './helpers/dom-sandbox.mjs';
 
 const { check, report } = checker();
 const BASE = 'ip.example.com';
-// 与 renderUi 的占位符替换对齐（脚本尾行 init('__BASE__') → init('ip.example.com')）
-const SCRIPT = UI_SCRIPT.split('__BASE__').join(BASE);
+// 脚本经 UI 模块 interface 实例化（与线上一致的管线），测试不复刻占位符替换机制
+const SCRIPT = uiScriptFor(BASE);
 
 // routes: { '<url>': { body } }；未命中即抛错（模拟子域不可达 / 网络失败）
 function makeFetch(routes, calls) {

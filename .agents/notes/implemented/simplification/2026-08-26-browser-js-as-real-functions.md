@@ -13,7 +13,7 @@ Status: implemented
 - `index.js`：`setStatus` / `showHint` / `looksLikeIp` / `grab(base, sub, label)` / `init(base)` / `isIpv6` / `familyOf` / `verdictFor` → `export const UI_SCRIPT`（后三者随[判定表收敛](2026-08-27-verdict-single-source.md)追加，`isIpv6` 是 `familyOf` 的依赖）；`BASE` 由全局前缀行（`var BASE = '__BASE__'`）改为参数化传递，尾行 `init('__BASE__')` 仍由 renderUi 渲染时替换。
 - `[[default]].js`：`$` / `addIp` / `isPublicIp` / `extractIp` / `detect` / `fetchIp` / `run` → `export const WEBRTC_SCRIPT`；正则还原正常写法（`[0-9]`→`\d`、`[.]`→`\.`，严格等价），`join('\n')` 恢复字面换行；转义纪律注释删除。
 - 测试在 seam 处消费值：新增 `test/helpers/dom-sandbox.mjs` 共享 mock DOM/vm 沙箱；新增 `test/ui-dom.mjs` 直接执行 `UI_SCRIPT` 覆盖四条路径（双栈成功 / 同源回退 / IPv4 连接判定 / 中文错误原因），并断言抓取日志无 `6.` 子域请求；`webrtc-dom.mjs` 改为 `import { WEBRTC_SCRIPT }`，删除 HTML 正则切除。
-- `simulate.mjs` 退役刮取式断言：脚本源码子串断言、`new Function` 语法冒烟两条（语法改由模块 import 与 `node --check` 保证）、『正则未丢失转义』断言（方言已亡）；保留两条胶水断言——渲染 HTML 包含（替换占位符后的）`UI_SCRIPT` 与 `WEBRTC_SCRIPT`；HTML 结构与措辞断言不动。
+- `simulate.mjs` 退役刮取式断言：脚本源码子串断言、`new Function` 语法冒烟两条（语法改由模块 import 与 `node --check` 保证）、『正则未丢失转义』断言（方言已亡）；保留两条胶水断言——渲染 HTML 包含实例化后的 `UI_SCRIPT` 与 `WEBRTC_SCRIPT`（UI 侧 2026-08-29 起经 `uiScriptFor` interface 比对，测试不复刻占位符替换机制，见[renderUi UI 模块 interface 笔记](../architecture/2026-08-29-renderui-ui-module-interface.md)；WEBRTC 无占位符不变）；HTML 类名钉住断言已删（用户可见契约保留，见同笔记）；HTML 结构与措辞断言不动。
 - 决策原则（同[协议族语义笔记](../feature/2026-08-14-protocol-family-semantics.md)）：正确性 > 稳定性，允许破坏性更改。
 
 ## Alternatives considered

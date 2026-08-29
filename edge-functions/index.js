@@ -110,8 +110,19 @@ function uiScriptScope() {
   init('__BASE__');
 }
 
-/** 主页脚本值：uiScriptScope 作用域经 browserScript 序列化（局部闭包由词法作用域保证，共享助手自动拣选）；__BASE__ 占位符由 renderUi 在渲染时替换 */
+/** 主页脚本值：uiScriptScope 作用域经 browserScript 序列化（局部闭包由词法作用域保证，共享助手自动拣选）；__BASE__ 占位符由 uiScriptFor/renderUi 在实例化时替换 */
 export const UI_SCRIPT = browserScript(uiScriptScope, shared);
+
+/** BASE 白名单净化：仅保留域名字符集——base 实例化的唯一实现，renderUi 与 uiScriptFor 共用 */
+function sanitizeBase(base) {
+  return String(base).replace(/[^a-zA-Z0-9.-]/g, '');
+}
+
+/** 主页脚本的 BASE 实例化（UI 模块 interface 成员）：测试与消费方经此取得与线上一致的可执行脚本，不复刻占位符替换机制。
+ * 净化后字符集内 esc 为恒等，故本函数产物与 renderUi 输出中的脚本子串逐字一致。 */
+export function uiScriptFor(base) {
+  return UI_SCRIPT.split('__BASE__').join(sanitizeBase(base));
+}
 
 /** 查询网页模板：仅 __VERDICT_CLS__/__VERDICT__/__BASE__ 三处占位符，模块加载时构建一次，请求时只做替换 */
 const UI_TEMPLATE = (() => {
@@ -173,12 +184,11 @@ function renderUi(family, base) {
   let html = UI_TEMPLATE;
   // 占位符替换（徽章判定与 BASE），并做基础转义避免注入
   const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  const safeBase = String(base).replace(/[^a-zA-Z0-9.-]/g, '');
   // 徽章判定收敛于 verdictFor（与浏览器 init 共用同一实现）；未知态为服务端专属『检测中…』（JS 加载后校准）
   const v = verdictFor(family) || { text: '检测中…', cls: 'badge unknown' };
   html = html.split('__VERDICT_CLS__').join(v.cls);
   html = html.split('__VERDICT__').join(v.text);
-  html = html.split('__BASE__').join(esc(safeBase));
+  html = html.split('__BASE__').join(esc(sanitizeBase(base)));
   return html;
 }
 
