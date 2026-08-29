@@ -201,19 +201,20 @@ export async function onRequest(context) {
   const blocked = methodGuard(request);
   if (blocked) return blocked;
   const info = hostInfo(request);
-  const ip = getClientIp(request);
-  const family = familyOf(ip) || '未知';
 
   switch (info.sub) {
     case '4':
-      return handleV4(request, ip);
+      return handleV4(request);
     case 'test':
-      return handleTest(request, ip);
-    default:
-      // 根域名 / ip. 前缀 / Makers 默认域名 → 返回查询网页
+      return handleTest(request);
+    default: {
+      // 根域名 / ip. 前缀 / Makers 默认域名 → 返回查询网页（首屏徽章：消费点自取 IP）
+      const ip = getClientIp(request);
+      const family = familyOf(ip) || '未知';
       return new Response(renderUi(family, info.base), {
         status: 200,
         headers: baseHeaders({ 'content-type': 'text/html; charset=utf-8' }),
       });
+    }
   }
 }

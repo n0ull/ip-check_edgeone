@@ -143,7 +143,6 @@ export async function onRequest(context) {
     const u = new URL(request.url);
     path = u.pathname.replace(/\/+$/, '') || '/';
   } catch (_) { /* ignore */ }
-  const ip = getClientIp(request);
 
   // 页面侧路径以 case 标签消费端点路径 fact（subdomainPath，见 _shared.js）：grab 同源回退与
   // 服务端路由共用同一实现，两侧漂移在构造上不可能；/api/* 别名是纯服务端同义词，保持字面量
@@ -151,21 +150,24 @@ export async function onRequest(context) {
     case subdomainPath('4'):
     case '/api/4':
     case '/api/v4':
-      return handleV4(request, ip);
+      return handleV4(request);
     case subdomainPath('test'):
     case '/api/test':
-      return handleTest(request, ip);
+      return handleTest(request);
     case '/webrtc':
       return new Response(WEBRTC_HTML, {
         status: 200,
         headers: baseHeaders({ 'content-type': 'text/html; charset=utf-8' }),
       });
-    case '/api/self':
+    case '/api/self': {
+      // /api/self 自取 IP（消费点取用）：其余分支经 handler 自取或无需 IP
+      const ip = getClientIp(request);
       return jsonResponse({
         ip: ip || null,
         family: familyOf(ip) || 'unknown',
         service: 'edgeone-ip',
       });
+    }
     case '/favicon.ico':
       return new Response(null, { status: 204, headers: baseHeaders() });
     default:

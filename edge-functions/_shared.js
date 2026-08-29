@@ -113,7 +113,9 @@ export function subdomainPath(sub) {
   return null;
 }
 
-export function handleV4(request, ip) {
+/** 端点处理器自取客户端 IP（getClientIp 同模块直取）：调用方不透传 ip，「ip 来自同一 request」由构造保证 */
+export function handleV4(request) {
+  const ip = getClientIp(request);
   if (!ip) return textResponse('无法获取客户端 IP 地址。\n', 400);
   if (isIpv6(ip)) {
     return textResponse(
@@ -126,7 +128,9 @@ export function handleV4(request, ip) {
   return textResponse(ip + '\n', 200, { 'x-ip-family': 'IPv4' });
 }
 
-export function handleTest(request, ip) {
+/** 同 handleV4：自取客户端 IP，调用方不透传 */
+export function handleTest(request) {
+  const ip = getClientIp(request);
   if (!ip) return textResponse('无法获取客户端 IP 地址。\n', 400);
   const family = familyOf(ip);
   if (wantsJson(request)) {
