@@ -118,6 +118,32 @@ await section('index.js · Host 分发', async () => {
   check('POST 4. 根路径 → 405 + Allow', r.res.status === 405 && (r.res.headers.get('allow') || '').includes('GET'));
 });
 
+// ---------- hostInfo：Host 解析直接表征（形状矩阵 + 分发表全键互逆 round-trip）----------
+await section('hostInfo 形状矩阵', async () => {
+  const h = (url) => indexMod.hostInfo(new Request(url));
+  let r = h('https://4.ip.example.com/');
+  check('hostInfo 四标签现役形状：sub/base 提取', r.sub === '4' && r.base === 'ip.example.com');
+  r = h('https://test.ip.example.com/');
+  check('hostInfo test. 提取', r.sub === 'test' && r.base === 'ip.example.com');
+  r = h('https://ip.example.com/');
+  check('hostInfo 根域：无 sub', r.sub === '' && r.base === 'ip.example.com');
+  r = h('https://4.example.com/');
+  check('hostInfo 三标签域（替代部署形状）：sub 提取', r.sub === '4' && r.base === 'example.com');
+  r = h('https://foo.4.ip.example.com/');
+  check('hostInfo 非子域前缀不剥（base=整串，由同源回退兜底）', r.sub === '' && r.base === 'foo.4.ip.example.com');
+  r = h('https://4.ip.example.com:8443/');
+  check('hostInfo URL 路径端口剥离', r.sub === '4' && r.base === 'ip.example.com');
+  r = h('https://4.IP.Example.com/');
+  check('hostInfo URL 路径自动小写', r.sub === '4' && r.base === 'ip.example.com');
+
+  // 互逆 round-trip：grab 以 https://sub.<base>/ 构造子域 URL，hostInfo 必然解析回 (sub, base)；
+  // 键从分发表派生——表加行即自动多一条 round-trip 断言
+  for (const sub of Object.keys(indexMod.SUBDOMAIN_HANDLERS)) {
+    r = h('https://' + sub + '.example.com/');
+    check('round-trip：https://' + sub + '.example.com/ → (' + sub + ', example.com)', r.sub === sub && r.base === 'example.com');
+  }
+});
+
 // ---------- [[default]].js：路径端点 ----------
 await section('[[default]].js · 路径端点', async () => {
   const eo4 = { clientIp: '8.8.8.8', geo: {} };

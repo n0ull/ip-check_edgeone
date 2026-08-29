@@ -20,18 +20,27 @@
 import { browserScript, familyOf, getClientIp, methodGuard, handleV4, handleTest, baseHeaders, verdictFor, subdomainPath } from './_shared.js';
 import * as shared from './_shared.js';
 
-const SUBDOMAINS = ['4', 'test'];
+/** 子域分发表：Host 分发的唯一子域命名点——hostInfo 的成员判断与 onRequest 的处理器分发共用同一实现，
+    双份清单的双向漂移在构造上不可能。导出供测试从表键派生 round-trip（表加行即自动多一条断言）。 */
+export const SUBDOMAIN_HANDLERS = {
+  '4': handleV4,
+  'test': handleTest,
+};
 
-function hostInfo(request) {
+/** Host 解析：request.url 的 hostname（URL 解析自动小写、自动剥端口）；解析失败回退 Host 头
+    （生产恒为绝对 URL，此分支测试不可达——无法构造解析失败的 Request；小写化为与 URL 路径统一的防御）。
+    首标签命中分发表才提取 sub；未命中时 base 为整 hostname（如 foo.4.ip.<域名>），由同源回退兜底。 */
+export function hostInfo(request) {
   let hostname = '';
   try { hostname = new URL(request.url).hostname; } catch (_) { /* ignore */ }
   if (!hostname) {
     const host = request.headers.get('host') || '';
-    hostname = host.split(':')[0];
+    hostname = host.split(':')[0].toLowerCase();
   }
   const labels = hostname.split('.');
-  let sub = '';
-  if (labels.length >= 3 && SUBDOMAINS.indexOf(labels[0]) !== -1) sub = labels[0];
+  // hasOwnProperty.call 而非 Object.hasOwn（ES2022）：不把全站分发押在边缘运行时未验证的内建上；
+  // 防原型键（如 'constructor'）经 labels[0] 误命中
+  const sub = labels.length >= 3 && Object.prototype.hasOwnProperty.call(SUBDOMAIN_HANDLERS, labels[0]) ? labels[0] : '';
   return {
     hostname,
     sub,
@@ -202,19 +211,15 @@ export async function onRequest(context) {
   if (blocked) return blocked;
   const info = hostInfo(request);
 
-  switch (info.sub) {
-    case '4':
-      return handleV4(request);
-    case 'test':
-      return handleTest(request);
-    default: {
-      // 根域名 / ip. 前缀 / Makers 默认域名 → 返回查询网页（首屏徽章：消费点自取 IP）
-      const ip = getClientIp(request);
-      const family = familyOf(ip) || '未知';
-      return new Response(renderUi(family, info.base), {
-        status: 200,
-        headers: baseHeaders({ 'content-type': 'text/html; charset=utf-8' }),
-      });
-    }
-  }
+  // hostInfo 保证 sub 只会是 '' 或已验证表键——查表即全函数，无需二次守卫
+  const handler = SUBDOMAIN_HANDLERS[info.sub];
+  if (handler) return handler(request);
+
+  // 根域名 / ip. 前缀 / Makers 默认域名 / 未知前缀 → 返回查询网页（首屏徽章：消费点自取 IP）
+  const ip = getClientIp(request);
+  const family = familyOf(ip) || '未知';
+  return new Response(renderUi(family, info.base), {
+    status: 200,
+    headers: baseHeaders({ 'content-type': 'text/html; charset=utf-8' }),
+  });
 }
