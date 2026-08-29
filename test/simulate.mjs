@@ -205,6 +205,7 @@ await section('subdomainPath 端点路径 fact', async () => {
   check('subdomainPath test → /test', sharedMod.subdomainPath('test') === '/test');
   check('subdomainPath 未知子域 → null（服务端 case 永不匹配落 404，方向保守）', sharedMod.subdomainPath('6') === null && sharedMod.subdomainPath('') === null);
   check('UI_SCRIPT 含 subdomainPath（grab 同源回退引用，browserScript 拣选）', indexMod.UI_SCRIPT.includes('function subdomainPath'));
+  check('WEBRTC_SCRIPT 含 subdomainPath（run 出口 IP fetch 引用，browserScript 拣选）', catchAllMod.WEBRTC_SCRIPT.includes('function subdomainPath'));
 });
 
 // ---------- isIpv4：严格四段 0-255 判定（破坏性变更：256.x.x.x 等越界输入现返回 false）----------

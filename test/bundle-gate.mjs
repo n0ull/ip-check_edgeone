@@ -35,7 +35,9 @@ const V4 = '203.0.113.7';
 const V6 = '240e:390:abcd:1234::1';
 
 // —— [[default]].js 打包产物：WEBRTC_SCRIPT 四分支关键路径（泄漏一致分支，覆盖
-//    extractIp 对 host/srflx 候选的提取与 isPublicIp 过滤回调的实调）——
+//    extractIp 对 host/srflx 候选的提取与 isPublicIp 过滤回调的实调）。fetch 为单键严格
+//    路由（出口 IP 端点 fact 路径）：打包后 run() 若失去 subdomainPath 声明（改名类）或
+//    请求漂移路径，此处当场红 ——
 {
   const HOST_CAND = { candidate: { candidate: 'candidate:1 1 udp 2130706431 192.168.1.5 54321 typ host generation 0', type: 'host' } };
   const SRFLX_CAND = { candidate: { candidate: 'candidate:2 1 udp 1694498815 203.0.113.7 56789 typ srflx raddr 0.0.0.0 rport 0', type: 'srflx' } };
@@ -60,7 +62,10 @@ const V6 = '240e:390:abcd:1234::1';
     }
     close() {}
   }
-  const fetch = async () => ({ ok: true, text: async () => V4 + '\n' });
+  const fetch = async (u) => {
+    if (String(u) !== subdomainPath('test')) throw new Error('network fail: ' + u);
+    return { ok: true, text: async () => V4 + '\n' };
+  };
   let err = null;
   try { runScript(webrtcBundle.WEBRTC_SCRIPT, { document, RTCPeerConnection: MockPC, fetch }); }
   catch (e) { err = e; }

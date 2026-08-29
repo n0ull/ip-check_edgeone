@@ -13,7 +13,7 @@ WebRTC 是浏览器内置的 P2P 能力：页面 JS 建立 `RTCPeerConnection` �
 
 - **纯浏览器端检测**：Edge Functions 运行时（服务端 V8）无 `RTCPeerConnection`，WebRTC 检测必须由页面内联 JS 完成；结果仅在本机浏览器内计算，不发送到服务器；
 - 收集逻辑：创建 `RTCPeerConnection`（iceServers 配置 `stun:stun.miwifi.com:3478`），`createDataChannel` 触发候选收集（Safari 兼容），`onicecandidate` 提取 `srflx`（公网映射）与 `host`（本机网卡）地址，4 秒超时；过滤 mDNS 隐藏地址（`.local`）；
-- 展示三块：WebRTC 公网 IP、局域网 IP、当前出口 IP（同源抓取 `/test`）；判定：公网映射与出口 IP 一致 →『未发现泄漏』，不一致 →『可能存在 WebRTC 泄漏（VPN/代理未覆盖）』，无公网映射（STUN 不可达）→ 明确说明无法对比；
+- 展示三块：WebRTC 公网 IP、局域网 IP、当前出口 IP（同源抓取 `subdomainPath('test')`，见[端点路径单源化](../simplification/2026-08-29-endpoint-path-fact-single-sourcing.md)）；判定：公网映射与出口 IP 一致 →『未发现泄漏』，不一致 →『可能存在 WebRTC 泄漏（VPN/代理未覆盖）』，无公网映射（STUN 不可达）→ 明确说明无法对比；
 - 页面注明隐私与局限：检测本地完成；STUN 不可达时仅显示局域网 IP；浏览器 mDNS 隐藏时显示 `.local`。
 
 ## Alternatives considered

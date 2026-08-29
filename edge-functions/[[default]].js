@@ -16,7 +16,8 @@
 // isIpv4 服务端虽不直接调用，但 webrtcScriptScope 的页面局部函数以其为自由标识符，
 // 靠 browserScript 从 shared 命名空间按名字注入：import 声明该依赖使 esbuild 在打包时
 // 保留原符号名（缺失时 esbuild 为避免捕获自由标识符会把共享符号改名，页面脚本断裂，
-// 2026-08-29 线上事故；打包门禁 test/bundle-gate.mjs 把守）
+// 2026-08-29 线上事故；打包门禁 test/bundle-gate.mjs 把守）。
+// run() 的出口 IP fetch 引用 subdomainPath，同受此约束——本行 import 不可删。
 import { browserScript, getClientIp, methodGuard, handleV4, handleTest, familyOf, jsonResponse, baseHeaders, isIpv4, subdomainPath } from './_shared.js';
 import * as shared from './_shared.js';
 
@@ -72,7 +73,7 @@ function webrtcScriptScope() {
     var r = await detect(4000);
     $('pub').textContent = r.pub.length ? r.pub.join('\n') : (r.err ? '—（' + r.err + '）' : '—（未获取到公网映射）');
     $('loc').textContent = r.loc.length ? r.loc.join('\n') : '—（未发现或已被 mDNS 隐藏）';
-    var ext = await fetchIp('/test');
+    var ext = await fetchIp(subdomainPath('test'));
     $('ext').textContent = ext || '—';
     var verdict = $('verdict');
     var pubOnly = r.pub.filter(isPublicIp);

@@ -5,6 +5,7 @@
  * 用法：node test/webrtc-dom.mjs
  */
 import { WEBRTC_SCRIPT } from '../edge-functions/[[default]].js';
+import { subdomainPath } from '../edge-functions/_shared.js';
 import { makeDom, runScript, checker } from './helpers/dom-sandbox.mjs';
 
 const { check, report } = checker();
@@ -12,7 +13,9 @@ const { check, report } = checker();
 const HOST_CAND = { candidate: { candidate: 'candidate:1 1 udp 2130706431 192.168.1.5 54321 typ host generation 0', type: 'host' } };
 const srflx = (ip) => ({ candidate: { candidate: 'candidate:2 1 udp 1694498815 ' + ip + ' 56789 typ srflx raddr 0.0.0.0 rport 0', type: 'srflx' } });
 
-// candidates：按序投递的 ICE 候选（结尾自动补 null 结束收集）；fetchOk/fetchBody：/test 出口响应
+// candidates：按序投递的 ICE 候选（结尾自动补 null 结束收集）；fetchOk/fetchBody：出口 IP
+// 端点（subdomainPath('test')）的响应。fetch 为单键严格路由：脚本只应请求 fact 路径，
+// 未命中即网络失败——脚本侧路径漂移时分支 1-3 的判定断言当场红（URL 盲 mock 会把漂移喂成假绿）
 async function runWebrtc(candidates, fetchOk, fetchBody) {
   const { document, els } = makeDom();
   class MockPC {
@@ -29,7 +32,10 @@ async function runWebrtc(candidates, fetchOk, fetchBody) {
     }
     close() {}
   }
-  const fetch = async () => ({ ok: fetchOk, text: async () => fetchBody });
+  const fetch = async (u) => {
+    if (String(u) !== subdomainPath('test')) throw new Error('network fail: ' + u);
+    return { ok: fetchOk, text: async () => fetchBody };
+  };
   let err = null;
   try {
     runScript(WEBRTC_SCRIPT, { document, RTCPeerConnection: MockPC, fetch });
@@ -70,7 +76,7 @@ async function runWebrtc(candidates, fetchOk, fetchBody) {
   check('判定：无法对比', els['verdict'].className === 'verdict warn' && els['verdict'].textContent.includes('无法对比'), 'got: ' + els['verdict'].textContent);
 }
 
-// —— 分支 4：无出口 IP（/test 不可达）——
+// —— 分支 4：无出口 IP（出口 IP 端点不可达，ok:false 与生产漂移时的 404 同构）——
 {
   const { els } = await runWebrtc([HOST_CAND, srflx('203.0.113.7')], false, '');
   check('无出口：出口显示占位', els['ext'].textContent === '—', 'got: ' + els['ext'].textContent);
