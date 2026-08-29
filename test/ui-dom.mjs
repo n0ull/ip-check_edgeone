@@ -4,6 +4,8 @@
  * 用法：node test/ui-dom.mjs
  */
 import { uiScriptFor, onRequest } from '../edge-functions/index.js';
+import { onRequest as catchAllOnRequest } from '../edge-functions/[[default]].js';
+import { subdomainPath } from '../edge-functions/_shared.js';
 import { makeDom, runScript, checker } from './helpers/dom-sandbox.mjs';
 
 const { check, report } = checker();
@@ -34,6 +36,21 @@ async function runPage(routes) {
 const V4 = '203.0.113.7';
 const V6 = '240e:390:abcd:1234::1';
 
+// 回退路由体从真实 [[default]].js onRequest 派生（路径 4 先例：钉来源，不钉副本）；
+// 路由键取端点路径 fact（subdomainPath）——若 fact 与路由 switch 漂移，派生出的体是 404 JSON，
+// looksLikeIp 判假，本文件回退用例当场红
+async function fallbackRoutes() {
+  const routes = {};
+  for (const sub of ['4', 'test']) {
+    const p = subdomainPath(sub);
+    const req = new Request('https://ip.example.com' + p);
+    Object.defineProperty(req, 'eo', { value: { clientIp: V4, geo: {} }, enumerable: true });
+    const res = await catchAllOnRequest({ request: req, params: {}, env: {}, waitUntil: () => {} });
+    routes[p] = { body: await res.text() };
+  }
+  return routes;
+}
+
 // —— 路径 1：双栈成功（子域直达）——
 {
   const { els, calls } = await runPage({
@@ -48,16 +65,13 @@ const V6 = '240e:390:abcd:1234::1';
   check('不请求 6. 子域', !calls.some((u) => u.indexOf('://6.') !== -1), 'calls: ' + calls.join(', '));
 }
 
-// —— 路径 2：子域失败 → 同源回退 ——
+// —— 路径 2：子域失败 → 同源回退（路由键与响应体均派生自服务端真实实现）——
 {
-  const { els, calls } = await runPage({
-    ['/4']: { body: V4 + '\n' },
-    ['/test']: { body: V4 + '\n' },
-  });
-  check('回退：v4 字段由 /4 填充', els['v4'].textContent === V4, 'got: ' + els['v4'].textContent);
+  const { els, calls } = await runPage(await fallbackRoutes());
+  check('回退：v4 字段由同源路径填充', els['v4'].textContent === V4, 'got: ' + els['v4'].textContent);
   check('回退：状态标注 OK（同源回退）', els['v4-status'].textContent === 'OK（同源回退）' && els['v4-status'].className === 'status warn');
   check('回退：提示条显示', els['hint'].style.display === 'block');
-  check('回退：抓取日志含同源路径', calls.indexOf('/4') !== -1 && calls.indexOf('/test') !== -1, 'calls: ' + calls.join(', '));
+  check('回退：抓取日志含同源路径', calls.indexOf(subdomainPath('4')) !== -1 && calls.indexOf(subdomainPath('test')) !== -1, 'calls: ' + calls.join(', '));
 }
 
 // —— 路径 3：IPv4 连接判定 ——
@@ -80,8 +94,8 @@ const V6 = '240e:390:abcd:1234::1';
   const errBody = await errRes.text();
   check('派生前提：4. 对 IPv6 连接返回 400 中文文案', errRes.status === 400 && /[一-龥]/.test(errBody));
   const { els } = await runPage({
-    ['/4']: { body: errBody },
-    ['/test']: { body: V4 + '\n' },
+    [subdomainPath('4')]: { body: errBody },
+    [subdomainPath('test')]: { body: V4 + '\n' },
   });
   check('中文错误：v4 状态显示原因分句', els['v4-status'].textContent === errBody.split('，')[0], 'got: ' + els['v4-status'].textContent);
   check('中文错误：状态标 err', els['v4-status'].className === 'status err');

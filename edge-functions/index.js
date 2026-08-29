@@ -13,7 +13,11 @@
  * 注：不提供 6.ip.<domain>（平台无法强制仅 IPv6，与 test. 语义重复，兼容面已移除）。
  */
 
-import { browserScript, familyOf, getClientIp, methodGuard, handleV4, handleTest, baseHeaders, verdictFor } from './_shared.js';
+// subdomainPath 服务端不直接调用，但 uiScriptScope 的 grab 以其为自由标识符，
+// 靠 browserScript 从 shared 命名空间按名字注入：import 声明该依赖使 esbuild 在打包时
+// 保留原符号名（缺失时 esbuild 为避免捕获自由标识符会把共享符号改名，页面脚本断裂，
+// 2026-08-29 线上事故；打包门禁 test/bundle-gate.mjs 把守）
+import { browserScript, familyOf, getClientIp, methodGuard, handleV4, handleTest, baseHeaders, verdictFor, subdomainPath } from './_shared.js';
 import * as shared from './_shared.js';
 
 const SUBDOMAINS = ['4', 'test'];
@@ -64,7 +68,7 @@ function uiScriptScope() {
     } catch (e) { /* 子域不可达（未绑定自定义域名 / DNS 未配置），走同源回退 */ }
     if (!text) {
       try {
-        var res2 = await fetch('/' + sub, { cache: 'no-store' });
+        var res2 = await fetch(subdomainPath(sub), { cache: 'no-store' });
         var t2 = (await res2.text()).trim();
         if (res2.ok && looksLikeIp(t2)) { text = t2; viaFallback = true; }
         else if (t2 && /[一-龥]/.test(t2)) {

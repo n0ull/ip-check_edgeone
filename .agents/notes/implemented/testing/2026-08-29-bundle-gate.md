@@ -12,7 +12,7 @@ Status: implemented
 
 1. **打包**：esbuild API（`bundle: true, format: 'esm'`，其余默认）把两入口打进临时目录——选项经实测与线上产物一致（同一缺陷在同选项下复现、修复后消失）。
 2. **导入打包产物**：`[[default]].mjs` 的 `WEBRTC_SCRIPT`、`index.mjs` 的 `uiScriptFor`——测试消费平台构建后的真实序列化值，与线上同管线（含 `uiScriptFor` 的 BASE 实例化）。
-3. **行为断言**：复用 dom-sandbox（mock + Proxy 陷阱）跑两条用户可见契约——webrtc 泄漏一致分支（覆盖 `extractIp` 对 host/srflx 候选的提取、`isPublicIp` 过滤实调、判定链）与 ui 双栈分支（覆盖 `grab`/`setStatus`/`looksLikeIp` 局部链与 `familyOf`→`verdictFor` 共享链），共 10 断言。ICE 处理器错误捕获器把处理器内异常收进断言而非进程崩溃。
+3. **行为断言**：复用 dom-sandbox（mock + Proxy 陷阱）跑三条用户可见契约——webrtc 泄漏一致分支（覆盖 `extractIp` 对 host/srflx 候选的提取、`isPublicIp` 过滤实调、判定链）、ui 双栈分支（覆盖 `grab`/`setStatus`/`looksLikeIp` 局部链与 `familyOf`→`verdictFor` 共享链）与 ui 同源回退分支（路由键取端点路径 fact、响应体从打包 `[[default]].js` onRequest 派生，见[端点路径单源化笔记](../simplification/2026-08-29-endpoint-path-fact-single-sourcing.md)），共 13 断言。ICE 处理器错误捕获器把处理器内异常收进断言而非进程崩溃。
 
 打包门禁断「打包后行为」，与既有测试断「源码行为」互补；序列化机制本体（剥壳不变式、拣选）仍由 simulate 钉住，不在门禁中复刻。
 
@@ -22,7 +22,7 @@ Status: implemented
 esbuild AST 重印（引号、缩进、`\uXXXX` 转义、注释剥离）使两侧文本必然不同，断言永不成立。放弃（该差异是[import 调研笔记](../process/2026-08-27-edgeone-makers-import-support-investigation.md)记载的已知事实）。
 
 ### 打包产物复跑全部既有场景（webrtc 四分支 + ui 四路径）
-改名类断裂在关键路径（任何一次共享符号实调）即现，全量复跑只翻倍时长与断言数。放弃，保留最小关键路径对。
+改名类断裂在关键路径（任何一次共享符号实调）即现，全量复跑只翻倍时长与断言数。放弃，保留最小关键路径集（按同类盲区增量扩充，不追求场景全量）。
 
 ### 静态标识符自洽检查（不做打包）
 不经平台转换即检查，拦不住打包期改名，且复刻 `browserScript` 内部知识。放弃——与[改名笔记](../bug-fix/2026-08-29-webrtc-free-identifier-esbuild-rename.md)同款备选。

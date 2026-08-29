@@ -17,7 +17,7 @@
 // 靠 browserScript 从 shared 命名空间按名字注入：import 声明该依赖使 esbuild 在打包时
 // 保留原符号名（缺失时 esbuild 为避免捕获自由标识符会把共享符号改名，页面脚本断裂，
 // 2026-08-29 线上事故；打包门禁 test/bundle-gate.mjs 把守）
-import { browserScript, getClientIp, methodGuard, handleV4, handleTest, familyOf, jsonResponse, baseHeaders, isIpv4 } from './_shared.js';
+import { browserScript, getClientIp, methodGuard, handleV4, handleTest, familyOf, jsonResponse, baseHeaders, isIpv4, subdomainPath } from './_shared.js';
 import * as shared from './_shared.js';
 
 /* ——— /webrtc 页内嵌浏览器脚本（服务端不执行）：以下为浏览器端代码，以真实函数书写，———
@@ -145,12 +145,14 @@ export async function onRequest(context) {
   } catch (_) { /* ignore */ }
   const ip = getClientIp(request);
 
+  // 页面侧路径以 case 标签消费端点路径 fact（subdomainPath，见 _shared.js）：grab 同源回退与
+  // 服务端路由共用同一实现，两侧漂移在构造上不可能；/api/* 别名是纯服务端同义词，保持字面量
   switch (path) {
-    case '/4':
+    case subdomainPath('4'):
     case '/api/4':
     case '/api/v4':
       return handleV4(request, ip);
-    case '/test':
+    case subdomainPath('test'):
     case '/api/test':
       return handleTest(request, ip);
     case '/webrtc':
@@ -167,6 +169,6 @@ export async function onRequest(context) {
     case '/favicon.ico':
       return new Response(null, { status: 204, headers: baseHeaders() });
     default:
-      return jsonResponse({ error: 'not found', hint: '可用端点: /4 /test /api/self' }, 404);
+      return jsonResponse({ error: 'not found', hint: '可用端点: ' + subdomainPath('4') + ' ' + subdomainPath('test') + ' /api/self' }, 404);
   }
 }

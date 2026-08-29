@@ -11,7 +11,7 @@ Status: implemented
 网页（`edge-functions/index.js` 内联渲染）采用『**子域优先 + 同源回退**』抓取策略：
 
 - JS 先请求 `https://4.<BASE>/` 与 `https://test.<BASE>/`（`BASE` 由页面 Host 推导，服务端注入）；
-- 子域抓取失败（DNS 未配置、证书未签发等）时，回退到同源路径端点 `/4`、`/test`（同源携带令牌 Cookie，默认域名下可用）；
+- 子域抓取失败（DNS 未配置、证书未签发等）时，回退到同源路径端点 `/4`、`/test`（同源携带令牌 Cookie，默认域名下可用）；回退路径事实由 `_shared.js` 的 `subdomainPath` 单源提供，与服务端路由 switch 共用同一实现（见[端点路径事实单源化笔记](../simplification/2026-08-29-endpoint-path-fact-single-sourcing.md)）；
 - 回退发生时显示提示条（`.hint`），说明需绑定自定义域名后才能获取精确结果；
 - IPv6 卡片由双栈测试结果**派生**：`test.` 返回 IPv6 即显示该地址，IPv4 则显示『当前连接为 IPv4，未获取到 IPv6』；
 - 判定徽章服务端先行注入（本次连接的协议族），JS 加载完成后以 `test.` 结果校准；

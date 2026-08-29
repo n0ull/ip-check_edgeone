@@ -122,8 +122,11 @@ await section('index.js · Host 分发', async () => {
 await section('[[default]].js · 路径端点', async () => {
   const eo4 = { clientIp: '8.8.8.8', geo: {} };
   const eo6 = { clientIp: '2001:db8::1', geo: {} };
+  // 页面侧路径从端点路径 fact 派生（钉来源不钉副本）：路由改名只动 fact 一处，断言自动跟随
+  const p4 = sharedMod.subdomainPath('4');
+  const pTest = sharedMod.subdomainPath('test');
 
-  let r = await call(catchAllMod, 'ip.example.com', '/4', { eo: eo4 });
+  let r = await call(catchAllMod, 'ip.example.com', p4, { eo: eo4 });
   check('/4 返回 IPv4', r.res.status === 200 && r.body.trim() === '8.8.8.8');
   r = await call(catchAllMod, 'ip.example.com', '/api/v4', { eo: eo4 });
   check('/api/v4 返回 IPv4', r.res.status === 200 && r.body.trim() === '8.8.8.8');
@@ -135,10 +138,10 @@ await section('[[default]].js · 路径端点', async () => {
   j = null; try { j = JSON.parse(r.body); } catch (_) {}
   check('/api/v4 Accept: application/json 输出 JSON', !!j && j.ip === '8.8.8.8' && j.family === 'IPv4');
 
-  r = await call(catchAllMod, 'ip.example.com', '/4', { eo: eo4, method: 'POST' });
+  r = await call(catchAllMod, 'ip.example.com', p4, { eo: eo4, method: 'POST' });
   check('POST /4 → 405 + Allow', r.res.status === 405 && (r.res.headers.get('allow') || '').includes('GET'));
 
-  r = await call(catchAllMod, 'ip.example.com', '/test', { eo: eo6 });
+  r = await call(catchAllMod, 'ip.example.com', pTest, { eo: eo6 });
   check('/test 返回连接 IP', r.res.status === 200 && r.body.trim() === '2001:db8::1');
 
   r = await call(catchAllMod, 'ip.example.com', '/api/self', { eo: eo4 });
@@ -155,6 +158,7 @@ await section('[[default]].js · 路径端点', async () => {
 
   r = await call(catchAllMod, 'ip.example.com', '/nope', { eo: eo4 });
   check('未知路径 → 404 JSON', r.res.status === 404);
+  check('404 hint 列出子域路径与 /api/self（用户可见契约，子域段由 fact 派生）', r.body.includes('可用端点: /4 /test /api/self'));
 });
 
 // ---------- familyOf / verdictFor：措辞契约单点的纯函数断言 ----------
@@ -167,6 +171,14 @@ await section('familyOf / verdictFor 纯函数', async () => {
   check('verdictFor IPv6（文案+完整 className）', !!v6 && v6.text === 'IPv6 访问优先' && v6.cls === 'badge ipv6');
   check('verdictFor IPv4（文案+完整 className）', !!v4 && v4.text === 'IPv4 连接' && v4.cls === 'badge ipv4');
   check('verdictFor 未知 → null（第三态留调用点）', sharedMod.verdictFor('未知') === null && sharedMod.verdictFor('unknown') === null);
+});
+
+// ---------- subdomainPath：端点路径 fact（页面同源回退与路由 switch 的单一来源）----------
+await section('subdomainPath 端点路径 fact', async () => {
+  check('subdomainPath 4 → /4', sharedMod.subdomainPath('4') === '/4');
+  check('subdomainPath test → /test', sharedMod.subdomainPath('test') === '/test');
+  check('subdomainPath 未知子域 → null（服务端 case 永不匹配落 404，方向保守）', sharedMod.subdomainPath('6') === null && sharedMod.subdomainPath('') === null);
+  check('UI_SCRIPT 含 subdomainPath（grab 同源回退引用，browserScript 拣选）', indexMod.UI_SCRIPT.includes('function subdomainPath'));
 });
 
 // ---------- isIpv4：严格四段 0-255 判定（破坏性变更：256.x.x.x 等越界输入现返回 false）----------

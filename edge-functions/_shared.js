@@ -103,6 +103,16 @@ export function methodGuard(request) {
   return null;
 }
 
+/** 子域路径 fact：「子域 X 的路径端点是 /X」的唯一来源。页面侧 grab 同源回退经 browserScript 按名拣选消费，
+    [[default]].js 路由 switch 以 case 标签结构性消费——两侧漂移在构造上不可能；404 hint 的子域段同源。
+    未知子域返回 null：服务端 case 永不匹配落 404；页面侧响应判非 IP、卡片不填充，方向保守
+    （生产不可达：grab 仅以 '4'/'test' 调用）。 */
+export function subdomainPath(sub) {
+  if (sub === '4') return '/4';
+  if (sub === 'test') return '/test';
+  return null;
+}
+
 export function handleV4(request, ip) {
   if (!ip) return textResponse('无法获取客户端 IP 地址。\n', 400);
   if (isIpv6(ip)) {

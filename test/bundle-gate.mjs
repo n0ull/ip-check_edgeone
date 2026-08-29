@@ -13,6 +13,7 @@ import { tmpdir } from 'node:os';
 import { join, dirname, resolve } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { makeDom, runScript, checker } from './helpers/dom-sandbox.mjs';
+import { subdomainPath } from '../edge-functions/_shared.js';
 
 const { check, report } = checker();
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -101,6 +102,37 @@ const V6 = '240e:390:abcd:1234::1';
   check('打包产物：徽章判定 IPv6 访问优先（familyOf→verdictFor 链可用）', els['verdict'].textContent === 'IPv6 访问优先' && els['verdict'].className === 'badge ipv6');
   check('打包产物：IPv6 卡片由 test 派生', els['v6'].textContent === V6 && els['v6-status'].textContent === 'OK');
   check('打包产物：不请求 6. 子域', !calls.some((u) => u.indexOf('://6.') !== -1), 'calls: ' + calls.join(', '));
+}
+
+// —— index.js 打包产物：同源回退分支（直连子域不可达 → 回退路径）。复刻真实拓扑：
+//    index 打包页 → 同源路径（路由键取端点路径 fact）→ [[default]] 打包服务端 onRequest 派生响应体。
+//    改名类由直连路径块顺带覆盖（grab 引用 fact 后改名即 ReferenceError），本块守回退分支本身 ——
+{
+  const SCRIPT = uiBundle.uiScriptFor('ip.example.com');
+  const calls = [];
+  const routes = {};
+  for (const sub of ['4', 'test']) {
+    const p = subdomainPath(sub);
+    const req = new Request('https://ip.example.com' + p);
+    Object.defineProperty(req, 'eo', { value: { clientIp: V4, geo: {} }, enumerable: true });
+    const res = await webrtcBundle.onRequest({ request: req, params: {}, env: {}, waitUntil: () => {} });
+    routes[p] = { body: await res.text() };
+  }
+  const fetch = async (url) => {
+    const u = String(url);
+    calls.push(u);
+    if (u.indexOf('https://') === 0) throw new Error('network fail: ' + u); // 子域不可达，触发回退
+    const r = routes[u];
+    if (!r) throw new Error('network fail: ' + u);
+    return { ok: true, text: async () => r.body };
+  };
+  const { document, els } = makeDom();
+  const { result } = runScript(SCRIPT, { document, fetch });
+  await result;
+  await new Promise((r) => setTimeout(r, 20));
+  check('打包产物：同源回退 v4 字段填充', els['v4'].textContent === V4, 'got: ' + els['v4'].textContent);
+  check('打包产物：回退抓取命中端点路径 fact', calls.indexOf(subdomainPath('4')) !== -1 && calls.indexOf(subdomainPath('test')) !== -1, 'calls: ' + calls.join(', '));
+  check('打包产物：回退后提示条显示', els['hint'].style.display === 'block');
 }
 
 await rm(dir, { recursive: true, force: true });
