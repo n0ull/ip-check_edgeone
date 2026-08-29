@@ -6,3 +6,6 @@ dist/
 # Tencent Cloud EdgeOne
 .edgeone/*
 .tef_dist/*
+
+.omc/
+.serena/
