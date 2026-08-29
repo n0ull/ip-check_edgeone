@@ -13,7 +13,11 @@
  * 注意：curl 4.ip.<domain> / test.ip.<domain>（根路径）由 index.js 按 Host 分发；不再提供 6. 子域。
  */
 
-import { browserScript, getClientIp, methodGuard, handleV4, handleTest, familyOf, jsonResponse, baseHeaders } from './_shared.js';
+// isIpv4 服务端虽不直接调用，但 webrtcScriptScope 的页面局部函数以其为自由标识符，
+// 靠 browserScript 从 shared 命名空间按名字注入：import 声明该依赖使 esbuild 在打包时
+// 保留原符号名（缺失时 esbuild 为避免捕获自由标识符会把共享符号改名，页面脚本断裂，
+// 2026-08-29 线上事故；打包门禁 test/bundle-gate.mjs 把守）
+import { browserScript, getClientIp, methodGuard, handleV4, handleTest, familyOf, jsonResponse, baseHeaders, isIpv4 } from './_shared.js';
 import * as shared from './_shared.js';
 
 /* ——— /webrtc 页内嵌浏览器脚本（服务端不执行）：以下为浏览器端代码，以真实函数书写，———

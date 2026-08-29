@@ -28,7 +28,7 @@ Status: implemented
 
 ### 3. isIpv4 加入 WEBRTC_SCRIPT 序列化数组
 
-`extractIp` 的函数体引用 `isIpv4`，因此将 `isIpv4` 加入 `WEBRTC_SCRIPT` 序列化数组（`isIpv4` 无外部依赖，`toString()` 序列化后在 vm 沙箱中自包含可执行）。`UI_SCRIPT` 不受影响——其序列化数组本就不含 `isIpv4`，`looksLikeIp` 继续用自身的 `indexOf('.')` 宽松检测（不依赖严格正则），两者职责分离。
+`extractIp` 的函数体引用 `isIpv4`，因此将 `isIpv4` 加入 `WEBRTC_SCRIPT` 序列化数组（`isIpv4` 无外部依赖，`toString()` 序列化后在 vm 沙箱中自包含可执行）。注意：当时未把 `isIpv4` 加入 `[[default]].js` 的命名 import——该自由标识符缺口在平台构建的改名避让下于 2026-08-29 演化为线上 webrtc 事故，已修复并加打包门禁（见[改名笔记](2026-08-29-webrtc-free-identifier-esbuild-rename.md)）。`UI_SCRIPT` 不受影响——其序列化数组本就不含 `isIpv4`，`looksLikeIp` 继续用自身的 `indexOf('.')` 宽松检测（不依赖严格正则），两者职责分离。
 
 ### 4. 测试
 

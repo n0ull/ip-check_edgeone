@@ -40,7 +40,7 @@ Status: implemented
 
 边缘构建 bundle 时共享代码在两个入口产物中各出现一份（esbuild 独立 bundle 每个入口），对当前 ~130 行工具函数可忽略；若共享模块增长到 KB 级需评估 bundle 体积（边缘函数有大小限制）。
 
-部署冒烟（2026-08-27，一次性 Upload 项目 `ip-check-import-smoke`，迁移代码真实构建部署）证实：构建通过；`/4` `/test` `/api/self`、405、404 行为与迁移前一致；toString 序列化语义存活但文本不保真（esbuild AST 重印：缩进/引号/花括号/非 ASCII 转义改写、注释剥离，函数名保留）——部署产物页面脚本经 DOM 沙箱四路径验证（12 断言全绿）。详见[import 调研笔记](../process/2026-08-27-edgeone-makers-import-support-investigation.md)（已随本验证转 implemented）。
+部署冒烟（2026-08-27，一次性 Upload 项目 `ip-check-import-smoke`，迁移代码真实构建部署）证实：构建通过；`/4` `/test` `/api/self`、405、404 行为与迁移前一致；toString 序列化语义存活但文本不保真（esbuild AST 重印：缩进/引号/花括号/非 ASCII 转义改写、注释剥离；函数名当时保留，2026-08-29 自由标识符改名边界见[改名笔记](../bug-fix/2026-08-29-webrtc-free-identifier-esbuild-rename.md)）——部署产物页面脚本经 DOM 沙箱四路径验证（12 断言全绿）。详见[import 调研笔记](../process/2026-08-27-edgeone-makers-import-support-investigation.md)（已随本验证转 implemented）。
 
 `[[]default].js` 的 404 响应由 `jsonResponse` 提供（content-type: application/json），与 `/api/self` 一致；`baseHeaders`/`jsonResponse` 作为共享导出供入口文件直接使用。
 

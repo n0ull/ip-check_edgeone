@@ -11,7 +11,7 @@ Status: implemented
 **结论：支持（2026-08 实证，两级证据）。**
 
 - **CLI 包反编译（静态一手证据）**：`edgeone` npm 包 v1.6.28 的边缘函数构建器（`edgeone-dist/cli.js`，完全 bundle/minify，关键逻辑可提取）对每个入口文件独立调用 esbuild：`buildSync({ entryPoints: [e], bundle: true, write: false, ... })`——**未传入 `external`**，esbuild 默认解析并内联所有本地相对路径 import。文件是否注册为路由由 `isPagesFunction`（检查源码含 `onRequest`）决定，纯工具模块（如 `_shared.js`）被过滤，不会注册为路由。官方文档对跨文件 import 无显式声明（无论支持与否；中国站子页 404、国际站文档 gated）；文档缺失不改变源码事实。
-- **部署冒烟（动态实证，2026-08-27，一次性 Upload 项目 `ip-check-import-smoke`）**：`_shared.js` 迁移后真实部署——构建通过；`/4`、`/test`、`/api/self`、405、404 行为与迁移前一致；**toString 序列化语义存活但文本不保真**：esbuild 以 AST 重印函数源码（缩进 2→4 空格、单引号→双引号、单语句分支展开花括号、非 ASCII 字符串转 `\uXXXX` 转义、注释剥离），函数名保留、逻辑等价；部署产物中的实际页面脚本经 DOM 沙箱四路径验证（12 断言全绿，含 `\uFF0C` 中文分句路径）。
+- **部署冒烟（动态实证，2026-08-27，一次性 Upload 项目 `ip-check-import-smoke`）**：`_shared.js` 迁移后真实部署——构建通过；`/4`、`/test`、`/api/self`、405、404 行为与迁移前一致；**toString 序列化语义存活但文本不保真**：esbuild 以 AST 重印函数源码（缩进 2→4 空格、单引号→双引号、单语句分支展开花括号、非 ASCII 字符串转 `\uXXXX` 转义、注释剥离），函数名当时保留、逻辑等价（2026-08-29 边界补记：入口以自由标识符引用共享符号时 esbuild 会改名避让，见[改名笔记](../bug-fix/2026-08-29-webrtc-free-identifier-esbuild-rename.md)）；部署产物中的实际页面脚本经 DOM 沙箱四路径验证（12 断言全绿，含 `\uFF0C` 中文分句路径）。
 
 迁移已由[共享模块提取笔记](../simplification/2026-08-27-shared-module-extraction.md)实施。
 
@@ -26,6 +26,6 @@ Status: implemented
 跨文件 import 从「未验证的未知」变为「已验证的事实」；双份内联 + 文本一致性门禁的时代结束（`test/consistency.mjs` 退役，[一致性笔记](../../archived/testing/2026-08-15-dual-inline-consistency-and-test-gates.md)归档）。
 残余风险与边界：
 
-- 证据基于 CLI v1.6.28 与 2026-08-27 的实际构建行为；平台未来升级构建器、尤其启用压缩/改名（minify），会破坏 toString 序列化机制（函数名被改写即页面脚本失效）——升级 `edgeone` CLI 后应重跑一次部署冒烟（对比页面内嵌脚本函数名 + DOM 沙箱行为）。2026-08-29 起该回评条件同样覆盖[页面脚本作用域](../architecture/2026-08-29-page-script-scope-and-browserscript.md)的剥壳不变式（`function 名() {` 起始、末 `}` 收尾、签名无解构参数）；本地侧已由 simulate 的 browserScript 不变式断言 + DOM 沙箱执行覆盖。
+- 证据基于 CLI v1.6.28 与 2026-08-27 的实际构建行为；平台未来升级构建器、尤其启用压缩/改名（minify），会破坏 toString 序列化机制（函数名被改写即页面脚本失效）——升级 `edgeone` CLI 后应重跑一次部署冒烟（对比页面内嵌脚本函数名 + DOM 沙箱行为）。2026-08-29 起该回评条件同样覆盖[页面脚本作用域](../architecture/2026-08-29-page-script-scope-and-browserscript.md)的剥壳不变式（`function 名() {` 起始、末 `}` 收尾、签名无解构参数）；本地侧由 simulate 的 browserScript 不变式断言 + DOM 沙箱执行 + [打包门禁](../testing/2026-08-29-bundle-gate.md)（esbuild bundle 复刻平台构建，2026-08-29 起）覆盖。
 - esbuild 独立 bundle 每个入口，共享代码在两个入口产物中各出现一份（当前 ~130 行可忽略；增长到 KB 级再评估边缘函数体积限制）。
 - 若未来能访问控制台内官方文档，应复核「支持」是否有官方显式声明。

@@ -39,6 +39,7 @@ ip-check/
     ├── simulate.mjs        # Host 分发与路径端点逻辑断言
     ├── ui-dom.mjs          # 主页脚本（UI_SCRIPT）的 DOM 沙箱测试
     ├── webrtc-dom.mjs      # WebRTC 页脚本（WEBRTC_SCRIPT）的 DOM 沙箱测试
+    ├── bundle-gate.mjs     # 打包门禁：esbuild 复刻平台构建后断言页面脚本行为
     └── helpers/
         └── dom-sandbox.mjs # 两个 DOM 沙箱测试共享的 mock/vm 助手
 ```
@@ -59,7 +60,7 @@ edgeone login       # 按提示选择 China 国内站，浏览器弹窗完成授
 ## 二、本地调试
 
 ```bash
-npm install        # 可选：无第三方依赖，但会自动启用 pre-commit 钩子
+npm install        # 安装 devDependencies（esbuild，打包门禁用）并自动启用 pre-commit 钩子
 edgeone makers dev
 ```
 

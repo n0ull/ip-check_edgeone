@@ -8,7 +8,7 @@ Status: implemented
 
 ## Decision
 
-浏览器脚本改写为真实具名函数（服务端从不调用），模块加载时经 `Function.prototype.toString()` 序列化拼接为脚本字符串注入页面（当时为模块顶层函数 + 手工序列化数组；2026-08-29 起嵌套进[页面脚本作用域](../architecture/2026-08-29-page-script-scope-and-browserscript.md)，闭包改由词法作用域与 browserScript 自动保证；本项目无本地构建步骤；平台构建器 esbuild 会以 AST 重印源码——函数名与语义保留、格式与注释不保真，语义等价经 2026-08-27 部署冒烟验证，见[import 调研笔记](../process/2026-08-27-edgeone-makers-import-support-investigation.md)）：
+浏览器脚本改写为真实具名函数（服务端从不调用），模块加载时经 `Function.prototype.toString()` 序列化拼接为脚本字符串注入页面（当时为模块顶层函数 + 手工序列化数组；2026-08-29 起嵌套进[页面脚本作用域](../architecture/2026-08-29-page-script-scope-and-browserscript.md)，闭包改由词法作用域与 browserScript 自动保证；本项目无本地构建步骤；平台构建器 esbuild 会以 AST 重印源码——语义与声明结构保留、格式与注释不保真（符号名可在自由标识符避让下被改名，2026-08-29 发现，见[改名笔记](../bug-fix/2026-08-29-webrtc-free-identifier-esbuild-rename.md)），语义等价经 2026-08-27 部署冒烟验证，见[import 调研笔记](../process/2026-08-27-edgeone-makers-import-support-investigation.md)）：
 
 - `index.js`：`setStatus` / `showHint` / `looksLikeIp` / `grab(base, sub, label)` / `init(base)` / `isIpv6` / `familyOf` / `verdictFor` → `export const UI_SCRIPT`（后三者随[判定表收敛](2026-08-27-verdict-single-source.md)追加，`isIpv6` 是 `familyOf` 的依赖）；`BASE` 由全局前缀行（`var BASE = '__BASE__'`）改为参数化传递，尾行 `init('__BASE__')` 仍由 renderUi 渲染时替换。
 - `[[default]].js`：`$` / `addIp` / `isPublicIp` / `extractIp` / `detect` / `fetchIp` / `run` → `export const WEBRTC_SCRIPT`；正则还原正常写法（`[0-9]`→`\d`、`[.]`→`\.`，严格等价），`join('\n')` 恢复字面换行；转义纪律注释删除。

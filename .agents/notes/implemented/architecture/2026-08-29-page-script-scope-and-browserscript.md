@@ -9,7 +9,7 @@ Status: implemented
 ## Decision
 
 - **页面脚本作用域**：每个页面的浏览器函数嵌套声明进一个真实函数（`uiScriptScope` / `webrtcScriptScope`，各留宿主文件），胶水语句（`init('__BASE__')`、`$('run').addEventListener(…)`）为作用域末行。页面局部函数的闭包由 JavaScript 词法作用域结构性保证——函数体文本天然携带全部嵌套声明，「登记」这个动作不复存在。
-- **`browserScript(scope, shared)`（_shared.js）**：序列化器剥取作用域函数体（首个 `{` 至末个 `}`），再从 `shared` 命名空间（宿主文件 `import * as shared`）按 `\b` 名字对作用域体做**传递闭包拣选**（init→familyOf→isIpv6 链自动展开），前置被引用者源码。误拣（名字出现于字符串/正则/注释）只会让页面多一个无害函数；漏拣不可能（名字被引用必被 `\b` 命中）；非函数导出跳过不序列化（引用它的页面在测试期 ReferenceError，方向保守）。剥壳不变式（签名无解构参数；esbuild 重印保留函数声明结构）由 simulate 不变式断言钉住。
+- **`browserScript(scope, shared)`（_shared.js）**：序列化器剥取作用域函数体（首个 `{` 至末个 `}`），再从 `shared` 命名空间（宿主文件 `import * as shared`）按 `\b` 名字对作用域体做**传递闭包拣选**（init→familyOf→isIpv6 链自动展开），前置被引用者源码。误拣（名字出现于字符串/正则/注释）只会让页面多一个无害函数；漏拣不可能（名字被引用必被 `\b` 命中）；非函数导出跳过不序列化（引用它的页面在测试期 ReferenceError，方向保守）。剥壳不变式（签名无解构参数；esbuild 重印保留函数声明**结构**——符号名则不然：入口以自由标识符引用共享符号时 esbuild 会改名避让，2026-08-29 事故见[改名笔记](../bug-fix/2026-08-29-webrtc-free-identifier-esbuild-rename.md)）由 simulate 不变式断言钉住。
 - **泄漏类残余风险测试期必现**：dom-sandbox 全局升级 Proxy 陷阱（`has` 恒真 + `get` 三级解析：测试 mock → 白名单（空 vm 沙箱全局——纯 JS 语言内建、随语言升级自动跟随——外加浏览器普遍存在的 `console`）→ 其余抛错点名）。浏览器函数误引模块级标识符、`typeof` 探测、缺 mock 全部在 `npm test` 爆炸而非线上。
 - **verdictFor 迁入 _shared.js**：徽章判定表本就是服务端 renderUi 与浏览器 init 共用的纯函数，迁入后两个宿主文件的序列化来源统一为 `shared` 命名空间，机制完全对称（[判定表笔记](../simplification/2026-08-27-verdict-single-source.md)事实已同步）。
 
@@ -29,4 +29,4 @@ interface 最深（一行、无任何清单），但 implementation 需要一个
 ## Consequences
 
 手工序列化数组退役；未来向页面脚本添加局部助手是纯函数书写（零登记步骤），添加跨模块助手只需正常 import——a85f852 类变更的机制性同步步骤消失。Proxy 陷阱首跑即拦截 `parseInt` 解析并逼出「空沙箱内建白名单」设计，当场验证了泄漏类缺陷的测试期可见性。
-代价：作用域嵌套使两文件浏览器区段缩进 +2（一次性 diff churn）；`browserScript` 的剥壳不变式新增一条 esbuild 重印依赖（函数声明结构保留）——[import 调研笔记](../process/2026-08-27-edgeone-makers-import-support-investigation.md)的 minify 回评条件同样覆盖本机制，升级 CLI 后重跑部署冒烟即可；序列化产物体积与原数组方案同量级（共享助手按引用拣选，未引用者不进页面）。
+代价：作用域嵌套使两文件浏览器区段缩进 +2（一次性 diff churn）；`browserScript` 的剥壳不变式新增一条 esbuild 重印依赖（函数声明结构保留；符号名可在自由标识符避让下被改名——入口须命名 import 页面脚本引用的共享符号，由[打包门禁](../testing/2026-08-29-bundle-gate.md)把守）——[import 调研笔记](../process/2026-08-27-edgeone-makers-import-support-investigation.md)的 minify 回评条件同样覆盖本机制，升级 CLI 后重跑部署冒烟即可；序列化产物体积与原数组方案同量级（共享助手按引用拣选，未引用者不进页面）。
