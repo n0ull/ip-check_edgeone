@@ -93,7 +93,7 @@ await section('index.js · Host 分发', async () => {
   check('UI 去除装饰（无 emoji）', !r.body.includes('🌐'));
   check('UI 注入 BASE 域名', r.body.includes('ip.example.com'));
   check('UI 服务端即时判定（IPv4 连接，非“优先”）', r.body.includes('IPv4 连接') && !r.body.includes('IPv4 访问优先'));
-  // id="hint" 存在性是承重断言：dom-sandbox 自动补建元素，ui-dom 无法发现模板缺元素，此为唯一守卫
+  // id="hint" 存在性是承重断言：dom-sandbox 自动补建元素，ui-dom 无法发现模板缺元素——UI 页结构守卫（webrtc 页五 id 同款见 /webrtc 段）
   check('UI 含提示条元素', r.body.includes('id=\"hint\"'));
   check('UI 嵌入脚本值（renderUi 与 uiScriptFor 集成）', r.body.includes(indexMod.uiScriptFor('ip.example.com')));
   // 钉住净化白名单本身：若未来字符集扩入 esc 可转义字符，esc∘sanitize 将不再恒等，此断言当场红
@@ -181,6 +181,9 @@ await section('[[default]].js · 路径端点', async () => {
   check('/webrtc 返回检查页 HTML', r.res.status === 200 && (r.res.headers.get('content-type') || '').includes('text/html') && r.body.includes('WebRTC'));
   check('/webrtc 页面不含服务端 IP 注入（纯浏览器检测）', !r.body.includes('request.eo'));
   check('/webrtc 嵌入脚本值（WEBRTC_SCRIPT）', r.body.includes(catchAllMod.WEBRTC_SCRIPT));
+  // 模板结构承重断言：dom-sandbox 自动补建缺失元素，webrtc-dom/bundle-gate 无法发现模板缺 id——
+  // 与 UI 页 id="hint" 同款守卫（钉来源：真实 onRequest 输出，非手抄模板）
+  check('/webrtc 含五个承重元素 id（pub/loc/ext/run/verdict）', ['pub', 'loc', 'ext', 'run', 'verdict'].every((id) => r.body.includes('id="' + id + '"')));
 
   r = await call(catchAllMod, 'ip.example.com', '/nope', { eo: eo4 });
   check('未知路径 → 404 JSON', r.res.status === 404);

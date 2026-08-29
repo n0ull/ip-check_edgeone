@@ -11,7 +11,7 @@ Status: implemented
 - **`uiScriptFor(base)` 导出为 UI 模块 interface 成员**（index.js）：脚本值按生产同管线实例化（`__BASE__` → `sanitizeBase(base)`）；`sanitizeBase` 提取为 base 净化的唯一实现，`renderUi` 与 `uiScriptFor` 共用。净化后字符集（`[a-zA-Z0-9.-]`）内 HTML 转义为恒等，故 `uiScriptFor` 产物与 `renderUi` 输出中的脚本子串逐字一致——一致性可证而非靠约定。
 - **测试只从这一个 seam 进入**：ui-dom 改调 `uiScriptFor(BASE)`；simulate 胶水断言改比对 `uiScriptFor('ip.example.com')`——实例化知识 3→1，复刻清零（断言仍证明模板确实嵌入了实例化脚本，机制变化不再碎测试）。
 - **输出断言按「用户可见契约」重整**（判别法：断言失败时用户会察觉什么）：删除 `class="field"`/`class="lbl"` 布局钉住与 `class="card"` 检查（用户零感知 + 假精度，web-ui 笔记记录的是布局语义而非类名）；保留文本/措辞/导航/BASE 注入等用户可见契约。
-- **`id="hint"` 存在性断言保留且为承重墙**：dom-sandbox 的 `makeDom` 自动补建元素，ui-dom 无法发现模板缺元素——simulate 这条文本断言是「模板真的包含提示条元素」在全仓库的唯一守卫。
+- **`id="hint"` 存在性断言保留且为承重墙**：dom-sandbox 的 `makeDom` 自动补建元素，ui-dom 无法发现模板缺元素——simulate 这条文本断言是「模板真的包含提示条元素」的守卫；2026-08-29 起该承重断言模式推广到 webrtc 页五元素 id（pub/loc/ext/run/verdict，simulate `/webrtc` 段），两页结构守卫对齐。
 - **元素 ID 三处同步接受现状**（模板 ids / 浏览器字面量 / 测试断言）：浏览器函数不可引用模块常量（序列化后成自由引用，恰是[页面脚本作用域笔记](2026-08-29-page-script-scope-and-browserscript.md)的 Proxy 陷阱所拦的泄漏类），共享常量最多统一 2/3 且造成全覆盖错觉；三个漂移方向均已功能性把守（浏览器字面量拼错 → 沙箱内 getElementById 得 null → TypeError 门禁红；模板改名 → ui-dom 行为断言红）。此裁决记录在案，防止未来架构评审重提。
 
 线上行为零变化：`renderUi` 输出逐字不变（esc∘sanitize ≡ sanitize），端点语义不变；66+17+14 断言全绿。
