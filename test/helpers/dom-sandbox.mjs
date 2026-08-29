@@ -20,9 +20,29 @@ export function makeDom() {
   return { document, els };
 }
 
-/** 在 vm 沙箱中执行脚本；返回 { context, result }，result 为脚本完成值（可直接 await 入口调用） */
+/** 「页面无配置即可引用」白名单：一个空 vm 沙箱的全局对象只含纯 JS 语言内建
+    （parseInt/String/Promise/…，随语言升级自动跟随）；vm 另预置少量宿主全局，其中 console
+    在真实浏览器必然存在、页面脚本合法引用不属于泄漏，故显式并入白名单。 */
+const intrinsics = vm.runInContext('globalThis', vm.createContext({}));
+intrinsics.console = console;
+
+/** 在 vm 沙箱中执行脚本；返回 { context, result }，result 为脚本完成值（可直接 await 入口调用）。
+    全局经 Proxy 陷阱把守，解析顺序：测试提供的 mock → 白名单 → 其余一律抛错并点名
+    （含模块级标识符泄漏与 typeof 探测）——泄漏类缺陷在测试期必现，而不是线上 ReferenceError。 */
 export function runScript(script, globals) {
-  const context = { setTimeout, clearTimeout, Promise, console, ...globals };
+  const context = new Proxy({
+    setTimeout,
+    clearTimeout,
+    ...globals,
+  }, {
+    has() { return true; },
+    get(t, key) {
+      if (typeof key === 'symbol') return undefined;
+      if (Object.hasOwn(t, key)) return t[key];
+      if (key in intrinsics) return intrinsics[key];
+      throw new ReferenceError('浏览器脚本引用了未提供的全局: ' + String(key));
+    },
+  });
   vm.createContext(context);
   const result = vm.runInContext(script, context, { timeout: 5000 });
   return { context, result };

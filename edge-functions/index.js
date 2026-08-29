@@ -13,7 +13,8 @@
  * 注：不提供 6.ip.<domain>（平台无法强制仅 IPv6，与 test. 语义重复，兼容面已移除）。
  */
 
-import { familyOf, getClientIp, methodGuard, handleV4, handleTest, baseHeaders, isIpv6 } from './_shared.js';
+import { browserScript, familyOf, getClientIp, methodGuard, handleV4, handleTest, baseHeaders, verdictFor } from './_shared.js';
+import * as shared from './_shared.js';
 
 const SUBDOMAINS = ['4', 'test'];
 
@@ -35,86 +36,82 @@ function hostInfo(request) {
 }
 
 /* ——— 主页内嵌浏览器脚本（服务端不执行）：以下为浏览器端代码，以真实函数书写，———
-   ——— 模块加载时经 Function.prototype.toString() 序列化为 UI_SCRIPT 注入页面。———
-   ——— 无外层字符串包裹，正则与换行按正常 JS 书写，语法由 node --check 直接把关。——— */
-function setStatus(id, text, cls) {
-  var el = document.getElementById(id);
-  el.textContent = text;
-  el.className = 'status ' + (cls || '');
-}
+   ——— 全部嵌套在 uiScriptScope 作用域内：页面局部函数的闭包由词法作用域结构性保证（无手工清单），———
+   ——— 跨模块共享助手由 browserScript 从 shared 命名空间按名字自动拣选；语法由 node --check 直接把关。——— */
+function uiScriptScope() {
+  function setStatus(id, text, cls) {
+    var el = document.getElementById(id);
+    el.textContent = text;
+    el.className = 'status ' + (cls || '');
+  }
 
-function showHint() {
-  var h = document.getElementById('hint');
-  if (h) h.style.display = 'block';
-}
+  function showHint() {
+    var h = document.getElementById('hint');
+    if (h) h.style.display = 'block';
+  }
 
-function looksLikeIp(t) {
-  return t && t.length <= 64 && !/[一-龥]/.test(t) && (t.indexOf('.') !== -1 || t.indexOf(':') !== -1);
-}
+  function looksLikeIp(t) {
+    return t && t.length <= 64 && !/[一-龥]/.test(t) && (t.indexOf('.') !== -1 || t.indexOf(':') !== -1);
+  }
 
-async function grab(base, sub, label) {
-  var text = null;
-  var viaFallback = false;
-  try {
-    var res = await fetch('https://' + sub + '.' + base + '/', { cache: 'no-store' });
-    var t = (await res.text()).trim();
-    if (res.ok && looksLikeIp(t)) text = t;
-  } catch (e) { /* 子域不可达（未绑定自定义域名 / DNS 未配置），走同源回退 */ }
-  if (!text) {
+  async function grab(base, sub, label) {
+    var text = null;
+    var viaFallback = false;
     try {
-      var res2 = await fetch('/' + sub, { cache: 'no-store' });
-      var t2 = (await res2.text()).trim();
-      if (res2.ok && looksLikeIp(t2)) { text = t2; viaFallback = true; }
-      else if (t2 && /[一-龥]/.test(t2)) {
-        var reason = t2.split('，')[0] || '不可用';
-        setStatus(label + '-status', reason, 'err');
-        return null;
-      }
-    } catch (e2) { /* ignore */ }
+      var res = await fetch('https://' + sub + '.' + base + '/', { cache: 'no-store' });
+      var t = (await res.text()).trim();
+      if (res.ok && looksLikeIp(t)) text = t;
+    } catch (e) { /* 子域不可达（未绑定自定义域名 / DNS 未配置），走同源回退 */ }
+    if (!text) {
+      try {
+        var res2 = await fetch('/' + sub, { cache: 'no-store' });
+        var t2 = (await res2.text()).trim();
+        if (res2.ok && looksLikeIp(t2)) { text = t2; viaFallback = true; }
+        else if (t2 && /[一-龥]/.test(t2)) {
+          var reason = t2.split('，')[0] || '不可用';
+          setStatus(label + '-status', reason, 'err');
+          return null;
+        }
+      } catch (e2) { /* ignore */ }
+    }
+    if (!text) {
+      setStatus(label + '-status', '请求失败', 'err');
+      return null;
+    }
+    document.getElementById(label).textContent = text;
+    setStatus(label + '-status', viaFallback ? 'OK（同源回退）' : 'OK', viaFallback ? 'warn' : 'ok');
+    if (viaFallback) showHint();
+    return text;
   }
-  if (!text) {
-    setStatus(label + '-status', '请求失败', 'err');
-    return null;
+
+  async function init(base) {
+    var results = await Promise.all([
+      grab(base, '4', 'v4'),
+      grab(base, 'test', 'test')
+    ]);
+    var verdict = document.getElementById('verdict');
+    var t = results[1];
+    var f = t ? familyOf(t) : null;
+    var v = f ? verdictFor(f) : null;
+    if (v) { verdict.textContent = v.text; verdict.className = v.cls; }
+    else { verdict.textContent = '无法判定'; verdict.className = 'badge unknown'; }
+    if (f === 'IPv4') { setStatus('test-status', '本次连接为 IPv4，无法判定 IPv6 是否存在', 'warn'); }
+    // IPv6 卡片：由双栈测试结果派生（IPv6 连接时 test 返回的地址即你的 IPv6）
+    if (f === 'IPv6') {
+      document.getElementById('v6').textContent = t;
+      setStatus('v6-status', 'OK', 'ok');
+    } else if (f) {
+      setStatus('v6-status', '当前连接为 IPv4，未获取到 IPv6', 'err');
+    } else {
+      setStatus('v6-status', '不可用', 'err');
+    }
   }
-  document.getElementById(label).textContent = text;
-  setStatus(label + '-status', viaFallback ? 'OK（同源回退）' : 'OK', viaFallback ? 'warn' : 'ok');
-  if (viaFallback) showHint();
-  return text;
+
+  init('__BASE__');
 }
 
-async function init(base) {
-  var results = await Promise.all([
-    grab(base, '4', 'v4'),
-    grab(base, 'test', 'test')
-  ]);
-  var verdict = document.getElementById('verdict');
-  var t = results[1];
-  var f = t ? familyOf(t) : null;
-  var v = f ? verdictFor(f) : null;
-  if (v) { verdict.textContent = v.text; verdict.className = v.cls; }
-  else { verdict.textContent = '无法判定'; verdict.className = 'badge unknown'; }
-  if (f === 'IPv4') { setStatus('test-status', '本次连接为 IPv4，无法判定 IPv6 是否存在', 'warn'); }
-  // IPv6 卡片：由双栈测试结果派生（IPv6 连接时 test 返回的地址即你的 IPv6）
-  if (f === 'IPv6') {
-    document.getElementById('v6').textContent = t;
-    setStatus('v6-status', 'OK', 'ok');
-  } else if (f) {
-    setStatus('v6-status', '当前连接为 IPv4，未获取到 IPv6', 'err');
-  } else {
-    setStatus('v6-status', '不可用', 'err');
-  }
-}
-
-/** 徽章判定表（family → 文案/样式 的唯一来源）：服务端 renderUi 首屏注入与浏览器 init 校准共用同一实现（经 UI_SCRIPT 序列化注入页面）。
-    未知态不归此管——服务端『检测中…』（尚未发生）与浏览器『无法判定』（已失败）语义不同，各留调用点。 */
-export function verdictFor(family) {
-  if (family === 'IPv6') return { text: 'IPv6 访问优先', cls: 'badge ipv6' };
-  if (family === 'IPv4') return { text: 'IPv4 连接', cls: 'badge ipv4' };
-  return null;
-}
-
-/** 主页脚本值：浏览器函数序列化拼接（isIpv6 / familyOf 由 _shared.js 提供，一并序列化）；__BASE__ 占位符由 renderUi 在渲染时替换 */
-export const UI_SCRIPT = [setStatus, showHint, looksLikeIp, grab, init, isIpv6, familyOf, verdictFor].map((f) => f.toString()).join('\n') + "\ninit('__BASE__');";
+/** 主页脚本值：uiScriptScope 作用域经 browserScript 序列化（局部闭包由词法作用域保证，共享助手自动拣选）；__BASE__ 占位符由 renderUi 在渲染时替换 */
+export const UI_SCRIPT = browserScript(uiScriptScope, shared);
 
 /** 查询网页模板：仅 __VERDICT_CLS__/__VERDICT__/__BASE__ 三处占位符，模块加载时构建一次，请求时只做替换 */
 const UI_TEMPLATE = (() => {

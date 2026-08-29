@@ -9,7 +9,7 @@ Status: implemented
 ## Decision
 
 - 新增共享函数 `familyOf(ip) → 'IPv6' | 'IPv4' | null`（两文件双份内联、export，自动落入交集一致性门禁）；空输入返回 null，未知标签由调用点按上下文补充（页面 `'未知'`、API `'unknown'`）——有意分叉从藏在三元里变为调用点显式可见；`handleTest`、`onRequest`、`/api/self` 的三元全部改经 `familyOf`；
-- 新增 `verdictFor(family) → { text, cls } | null`（仅 index.js，页面专属）：IPv6/IPv4 两态徽章文案与完整 className 的唯一来源；`renderUi`（服务端首屏）与 `init`（浏览器校准）共用同一实现——后者经 `UI_SCRIPT` 的 `toString()` 序列化注入页面（复用[浏览器脚本即真实函数](2026-08-26-browser-js-as-real-functions.md)的既定机制；`isIpv6`/`familyOf`/`verdictFor` 追加进序列化清单，`isIpv6` 是 `familyOf` 的依赖，缺一即在页面上下文 ReferenceError）；
+- 新增 `verdictFor(family) → { text, cls } | null`（页面专属；2026-08-29 起居 _shared.js，迁移见[页面脚本作用域笔记](../architecture/2026-08-29-page-script-scope-and-browserscript.md)）：IPv6/IPv4 两态徽章文案与完整 className 的唯一来源；`renderUi`（服务端首屏）与 `init`（浏览器校准）共用同一实现——后者经 `UI_SCRIPT` 的 `toString()` 序列化注入页面（复用[浏览器脚本即真实函数](2026-08-26-browser-js-as-real-functions.md)的既定机制；`isIpv6`/`familyOf`/`verdictFor` 当时追加进序列化清单，`isIpv6` 是 `familyOf` 的依赖，缺一即在页面上下文 ReferenceError）；
 - **第三态不合并**：服务端 `'检测中…'`（尚未发生）与浏览器 `'无法判定'`（已失败）语义不同，各留调用点；模板占位符改为承载完整 className（`class="__VERDICT_CLS__"`），消除「`badge ` 前缀烙在模板、浏览器全量赋值」的半个隐式接口；
 - 测试：`simulate.mjs` 对 `familyOf`/`verdictFor` 做纯函数断言（措辞契约钉在函数上）；`ui-dom.mjs` 中文错误用例改为从 `onRequest` 真实 400 输出派生期望值（`errBody.split('，')[0]`），钉来源不钉副本。
 
@@ -24,4 +24,4 @@ Status: implemented
 ## Consequences
 
 措辞契约从 4 处收敛到 1 张表：改措辞只改 `verdictFor` 一处实现 + 一处纯函数断言；浏览器与服务端在构造上不可能再分叉。`familyOf` 是交集门禁（见[一致性笔记](../../archived/testing/2026-08-15-dual-inline-consistency-and-test-gates.md)）自动纳管的第一个新共享函数。
-代价：`UI_SCRIPT` 序列化清单变长（8 个函数）；`verdictFor`/`familyOf` 需保持浏览器兼容写法（ES5 风格）；序列化函数的依赖必须一并入清单（本次 `isIpv6` 漏列曾在门禁中当场暴露）。
+代价：`UI_SCRIPT` 序列化清单变长（8 个函数；该清单后由[页面脚本作用域](../architecture/2026-08-29-page-script-scope-and-browserscript.md)的自动闭包取代）；`verdictFor`/`familyOf` 需保持浏览器兼容写法（ES5 风格）；序列化函数的依赖必须一并入清单（本次 `isIpv6` 漏列曾在门禁中当场暴露——漏登类此后由自动闭包在构造上消灭）。

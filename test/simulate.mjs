@@ -160,11 +160,11 @@ await section('familyOf / verdictFor 纯函数', async () => {
   check('familyOf IPv4', sharedMod.familyOf('1.2.3.4') === 'IPv4');
   check('familyOf IPv6', sharedMod.familyOf('240e:390:abcd:1234::1') === 'IPv6');
   check('familyOf 空输入 → null', sharedMod.familyOf('') === null && sharedMod.familyOf(null) === null);
-  const v6 = indexMod.verdictFor('IPv6');
-  const v4 = indexMod.verdictFor('IPv4');
+  const v6 = sharedMod.verdictFor('IPv6');
+  const v4 = sharedMod.verdictFor('IPv4');
   check('verdictFor IPv6（文案+完整 className）', !!v6 && v6.text === 'IPv6 访问优先' && v6.cls === 'badge ipv6');
   check('verdictFor IPv4（文案+完整 className）', !!v4 && v4.text === 'IPv4 连接' && v4.cls === 'badge ipv4');
-  check('verdictFor 未知 → null（第三态留调用点）', indexMod.verdictFor('未知') === null && indexMod.verdictFor('unknown') === null);
+  check('verdictFor 未知 → null（第三态留调用点）', sharedMod.verdictFor('未知') === null && sharedMod.verdictFor('unknown') === null);
 });
 
 // ---------- isIpv4：严格四段 0-255 判定（破坏性变更：256.x.x.x 等越界输入现返回 false）----------
@@ -180,6 +180,35 @@ await section('isIpv4 严格判定', async () => {
   check('isIpv4 空串 → false', sharedMod.isIpv4('') === false);
   check('isIpv4 null → false', sharedMod.isIpv4(null) === false);
   check('isIpv4 IPv6 → false', sharedMod.isIpv4('240e:390:abcd:1234::1') === false);
+});
+
+// ---------- browserScript：页面脚本作用域序列化器（剥壳不变式 + 共享拣选传递闭包）----------
+await section('browserScript 序列化器', async () => {
+  // 剥壳不变式：首个 { 至末个 } 为函数体；字符串里的花括号不影响切片
+  function demoScope() {
+    function helper(x) { return '}\n{' + x; }
+    var re = /[*+?]/;
+    helper(re);
+    // 注释提及未引用名字 notFn：验证误拣方向与非函数守卫
+    go();
+  }
+  const out = sharedMod.browserScript(demoScope, { go: function go() { return 1; } });
+  check('剥壳：不含包装函数签名', out.indexOf('demoScope') === -1);
+  check('剥壳：嵌套声明与胶水保留', out.includes('function helper') && out.trim().endsWith('go();'));
+  check('剥壳：字符串中的花括号转义原样保留（源码文本层面）', out.includes("'}\\n{'"));
+  check('剥壳产物语法有效（括号平衡，new Function 编译通过）', (() => { try { new Function(out); return true; } catch (_) { return false; } })());
+  check('共享拣选：被引用者入选（go）', out.includes('function go'));
+  const out2 = sharedMod.browserScript(demoScope, { go: function go() { return 1; }, notFn: 42 });
+  check('非函数导出跳过不序列化（注释提及亦不进页面）', !out2.includes('42'));
+
+  // 真实产物：UI_SCRIPT / WEBRTC_SCRIPT 的闭包完整性与未引用者排除
+  check('UI_SCRIPT 含 verdictFor（init 引用）', indexMod.UI_SCRIPT.includes('function verdictFor'));
+  check('UI_SCRIPT 含 isIpv6（init→familyOf→isIpv6 传递闭包）', indexMod.UI_SCRIPT.includes('function isIpv6'));
+  check('UI_SCRIPT 不含未引用助手（getClientIp/handleV4 不入选）', !indexMod.UI_SCRIPT.includes('function getClientIp') && !indexMod.UI_SCRIPT.includes('function handleV4'));
+  check('WEBRTC_SCRIPT 含 isIpv4（isPublicIp/extractIp 引用）', catchAllMod.WEBRTC_SCRIPT.includes('function isIpv4'));
+  check('WEBRTC_SCRIPT 不含未引用助手（familyOf 不入选）', !catchAllMod.WEBRTC_SCRIPT.includes('function familyOf'));
+  check('脚本以胶水语句收尾（UI）', indexMod.UI_SCRIPT.trim().endsWith("init('__BASE__');"));
+  check('脚本以胶水语句收尾（WEBRTC）', catchAllMod.WEBRTC_SCRIPT.trim().endsWith("addEventListener('click', run);"));
 });
 
 console.log('\n结果: ' + passed + ' 通过, ' + failed + ' 失败');

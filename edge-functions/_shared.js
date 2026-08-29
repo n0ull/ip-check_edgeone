@@ -35,6 +35,14 @@ export function familyOf(ip) {
   return isIpv6(ip) ? 'IPv6' : 'IPv4';
 }
 
+/** 徽章判定表（family → 文案/样式 的唯一来源）：服务端 renderUi 首屏注入与浏览器 init 校准共用同一实现（经 browserScript 序列化注入页面）。
+    未知态不归此管——服务端『检测中…』（尚未发生）与浏览器『无法判定』（已失败）语义不同，各留调用点。 */
+export function verdictFor(family) {
+  if (family === 'IPv6') return { text: 'IPv6 访问优先', cls: 'badge ipv6' };
+  if (family === 'IPv4') return { text: 'IPv4 连接', cls: 'badge ipv4' };
+  return null;
+}
+
 /**
  * 获取客户端真实 IP。
  * 生产环境（EdgeOne 边缘节点注入 request.eo）：只信 eo.clientIp，忽略可伪造的代理头；
@@ -122,4 +130,40 @@ export function handleTest(request, ip) {
   const extra = { 'x-ip-family': family };
   if (family === 'IPv6') extra['x-ip-preferred'] = 'IPv6';
   return textResponse(ip + '\n', 200, extra);
+}
+
+/**
+ * 页面脚本序列化器：把「页面脚本作用域」函数变成浏览器可执行的脚本文本。
+ *
+ * scope 是一个真实函数：页面局部函数全部嵌套声明在其体内，末行为胶水语句（如 init('__BASE__')）。
+ * 局部函数闭包由词法作用域结构性保证——函数体文本本身就携带全部嵌套声明，不存在可漏登记的清单；
+ * 跨模块共享助手从 shared 命名空间按名字（\b 词边界）自动拣选，含传递闭包
+ * （init 引用 familyOf → familyOf 的源码引用 isIpv6 → isIpv6 一并前置）。
+ *
+ * 剥壳不变式：scope.toString() 的首个 '{' 为函数体起始、末个 '}' 为函数体结束。
+ * 参数解构（签名含 '{'）会破坏该不变式，作用域函数不得使用解构参数；
+ * 本地 node 直跑与 esbuild 重印（函数名保留、结构不变）均满足。误拣（名字出现在字符串/正则中）
+ * 只会让页面多一个无害函数；非函数导出跳过不序列化，引用它的页面在测试期 ReferenceError——方向保守安全。
+ */
+export function browserScript(scope, shared) {
+  const src = scope.toString();
+  const body = src.slice(src.indexOf('{') + 1, src.lastIndexOf('}'));
+  const emitted = [];
+  const seen = {};
+  let frontier = body;
+  for (;;) {
+    let grew = false;
+    for (const name of Object.keys(shared)) {
+      if (seen[name] || !new RegExp('\\b' + name + '\\b').test(frontier)) continue;
+      seen[name] = true;
+      const fn = shared[name];
+      if (typeof fn !== 'function') continue;
+      const fnSrc = fn.toString();
+      emitted.push(fnSrc);
+      frontier += '\n' + fnSrc;
+      grew = true;
+    }
+    if (!grew) break;
+  }
+  return emitted.join('\n') + '\n' + body.trim() + '\n';
 }
