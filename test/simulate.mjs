@@ -257,7 +257,8 @@ await section('browserScript 序列化器', async () => {
   check('UI_SCRIPT 含 isIpv6（init→familyOf→isIpv6 传递闭包）', indexMod.UI_SCRIPT.includes('function isIpv6'));
   check('UI_SCRIPT 不含未引用助手（getClientIp/handleV4 不入选）', !indexMod.UI_SCRIPT.includes('function getClientIp') && !indexMod.UI_SCRIPT.includes('function handleV4'));
   check('WEBRTC_SCRIPT 含 isIpv4（isPublicIp/extractIp 引用）', catchAllMod.WEBRTC_SCRIPT.includes('function isIpv4'));
-  check('WEBRTC_SCRIPT 不含未引用助手（familyOf 不入选）', !catchAllMod.WEBRTC_SCRIPT.includes('function familyOf'));
+  check('WEBRTC_SCRIPT 含 familyOf（run 的 family 对齐引用，browserScript 拣选）', catchAllMod.WEBRTC_SCRIPT.includes('function familyOf'));
+  check('WEBRTC_SCRIPT 不含未引用助手（getClientIp 不入选）', !catchAllMod.WEBRTC_SCRIPT.includes('function getClientIp'));
   check('脚本以胶水语句收尾（UI）', indexMod.UI_SCRIPT.trim().endsWith("init('__BASE__');"));
   check('脚本以胶水语句收尾（WEBRTC）', catchAllMod.WEBRTC_SCRIPT.trim().endsWith("addEventListener('click', run);"));
 });

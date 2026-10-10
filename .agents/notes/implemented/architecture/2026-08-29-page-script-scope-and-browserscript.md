@@ -13,7 +13,7 @@ Status: implemented
 - **泄漏类残余风险测试期必现**：dom-sandbox 全局升级 Proxy 陷阱（`has` 恒真 + `get` 三级解析：测试 mock → 白名单（空 vm 沙箱全局——纯 JS 语言内建、随语言升级自动跟随——外加浏览器普遍存在的 `console`）→ 其余抛错点名）。浏览器函数误引模块级标识符、`typeof` 探测、缺 mock 全部在 `npm test` 爆炸而非线上。
 - **verdictFor 迁入 _shared.js**：徽章判定表本就是服务端 renderUi 与浏览器 init 共用的纯函数，迁入后两个宿主文件的序列化来源统一为 `shared` 命名空间，机制完全对称（[判定表笔记](../simplification/2026-08-27-verdict-single-source.md)事实已同步）。
 
-线上行为零变化：`UI_SCRIPT`/`WEBRTC_SCRIPT` 导出不变，页面产物函数集合与原先手工数组精确一致（两页各 8 函数 + 胶水），66+17+14 断言全绿。
+线上行为零变化：`UI_SCRIPT`/`WEBRTC_SCRIPT` 导出不变，页面产物函数集合与原先手工数组精确一致（当时两页各 8 函数 + 胶水），断言全绿（当时 66+17+14 条）。（函数与断言计数随后续演进而失效——2026-10-11 family 对齐后 WEBRTC 页共享拣选已含 familyOf/isIpv6；权威以 simulate 的拣选断言为准，不钉具体数字。）
 
 ## Alternatives considered
 

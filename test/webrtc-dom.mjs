@@ -1,7 +1,7 @@
 /**
  * WebRTC 检查页端到端本地测试：直接消费 WEBRTC_SCRIPT 值，vm 沙箱 + mock document /
- * RTCPeerConnection / fetch 模拟点击「开始检测」，覆盖判定四分支：
- * 无泄漏 / 存在泄漏 / 无公网映射（STUN 不可达）/ 无出口 IP。
+ * RTCPeerConnection / fetch 模拟点击「开始检测」，覆盖判定四主分支（无泄漏/存在泄漏/
+ * 无公网映射/无出口 IP）+ 族错配、CGNAT、真实格式 IPv6 候选与 mDNS .local 候选。
  * 用法：node test/webrtc-dom.mjs
  */
 import { WEBRTC_SCRIPT } from '../edge-functions/[[default]].js';
@@ -81,6 +81,35 @@ async function runWebrtc(candidates, fetchOk, fetchBody) {
   const { els } = await runWebrtc([HOST_CAND, srflx('203.0.113.7')], false, '');
   check('无出口：出口显示占位', els['ext'].textContent === '—', 'got: ' + els['ext'].textContent);
   check('判定：无法获取当前出口 IP', els['verdict'].className === 'verdict err' && els['verdict'].textContent.includes('无法获取当前出口 IP'), 'got: ' + els['verdict'].textContent);
+}
+
+// —— 场景：协议族错配（IPv6 出口 + IPv4-only srflx）→ 无法对比而非泄漏（family 对齐回归钉；落既有 warn 分支，非新判定分支）——
+{
+  const { els } = await runWebrtc([srflx('203.0.113.7')], true, '240e:390:abcd:1234::9\n');
+  check('族错配：不误报泄漏，落入无法对比', els['verdict'].className === 'verdict warn' && els['verdict'].textContent.includes('无法对比') && !els['verdict'].textContent.includes('可能存在 WebRTC 泄漏'), 'got: ' + els['verdict'].textContent);
+}
+
+// —— CGNAT：srflx 反射 100.64.0.0/10 内层地址 → 判非公网不参与比对，落入无法对比 ——
+{
+  const { els } = await runWebrtc([srflx('100.64.1.2')], true, '203.0.113.7\n');
+  check('CGNAT 内层地址不误报泄漏', els['verdict'].textContent.includes('无法对比') && !els['verdict'].textContent.includes('可能存在 WebRTC 泄漏'), 'got: ' + els['verdict'].textContent);
+}
+
+// —— 真实格式候选行：IPv6 host/srflx（含 ufrag/network-id 等额外 token，srflx 的 raddr 为真实局域网地址）——
+const REAL_HOST6 = { candidate: { candidate: 'candidate:1 1 udp 2130706431 240e:390:abcd:1234::1 54321 typ host generation 0 ufrag abcd network-id 1', type: 'host' } };
+const REAL_SRFLX6 = { candidate: { candidate: 'candidate:2 1 udp 1694498815 240e:390:abcd:1234::9 56789 typ srflx raddr 240e:390:abcd:1234::1 rport 54321 generation 0 ufrag abcd', type: 'srflx' } };
+{
+  const { els } = await runWebrtc([REAL_HOST6, REAL_SRFLX6], true, '240e:390:abcd:1234::9\n');
+  check('真实格式 IPv6 srflx 已提取', els['pub'].textContent === '240e:390:abcd:1234::9', 'got: ' + els['pub'].textContent);
+  check('真实格式 IPv6 局域网已提取', els['loc'].textContent === '240e:390:abcd:1234::1', 'got: ' + els['loc'].textContent);
+  check('真实格式同族一致：未发现泄漏', els['verdict'].className === 'verdict ok', 'got: ' + els['verdict'].textContent);
+}
+
+// —— mDNS .local 候选：extractIp 字符集正则结构性拒绝，静默丢弃 ——
+const MDNS_CAND = { candidate: { candidate: 'candidate:5 1 udp 2130706431 a1b2c3.local 54321 typ host generation 0', type: 'host' } };
+{
+  const { els } = await runWebrtc([MDNS_CAND], true, '203.0.113.7\n');
+  check('mDNS .local 候选被静默丢弃', els['loc'].textContent === '—（未发现或已被 mDNS 隐藏）', 'got: ' + els['loc'].textContent);
 }
 
 report();

@@ -30,10 +30,11 @@ function webrtcScriptScope() {
 
   function addIp(arr, ip) { if (ip && arr.indexOf(ip) < 0) arr.push(ip); }
 
-  // 非公网判定：IPv4 拒私网/回环/链路本地；IPv6 拒 ULA（fc00::/7，即 fc…/fd… 前缀）与链路本地（fe80::/10）
+  // 非公网判定：IPv4 拒私网/CGNAT（100.64.0.0/10，RFC 6598，移动网常见——srflx 经 CGNAT 反射内层地址，误判为公网必误报泄漏）/回环/链路本地；
+  // IPv6 拒 ULA（fc00::/7，即 fc…/fd… 前缀）与链路本地（fe80::/10）
   function isPublicIp(ip) {
     return isIpv4(ip)
-      ? !/^(10\.|127\.|169\.254\.|192.168\.|172\.(1[6-9]|2[0-9]|3[01])\.)/.test(ip)
+      ? !/^(10\.|127\.|169\.254\.|192.168\.|172\.(1[6-9]|2[0-9]|3[01])\.|100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.)/.test(ip)
       : !/^f[cd][0-9a-f]{2}:|^fe80:/.test(ip);
   }
 
@@ -60,7 +61,8 @@ function webrtcScriptScope() {
       pc.onicecandidate = function (e) {
         if (!e.candidate) { finish(); return; }
         var ip = extractIp(e.candidate.candidate);
-        if (!ip || ip.indexOf('.local') !== -1) return;
+        // mDNS 的 .local 主机名已被 extractIp 的 token 校验整体排除（严格 isIpv4 + IPv6 冒号门——字符集正则单独不充分，hex 字母主机名可通过），无需在此再查
+        if (!ip) return;
         if (e.candidate.type === 'srflx') addIp(out.pub, ip);
         else if (e.candidate.type === 'host') addIp(out.loc, ip);
       };
@@ -71,6 +73,13 @@ function webrtcScriptScope() {
 
   async function fetchIp(path) { try { var r = await fetch(path, { cache: 'no-store' }); var t = (await r.text()).trim(); if (r.ok && t && t.length <= 64 && t.indexOf('<') === -1) return t; } catch (_) { /* ignore */ } return null; }
 
+  // verdict 赋值唯一出口：run() 各分支的成对 className/textContent 赋值收敛于此
+  function setVerdict(cls, text) {
+    var verdict = $('verdict');
+    verdict.className = 'verdict ' + cls;
+    verdict.textContent = text;
+  }
+
   async function run() {
     var btn = $('run'); btn.disabled = true; btn.textContent = '检测中…';
     var r = await detect(4000);
@@ -78,13 +87,16 @@ function webrtcScriptScope() {
     $('loc').textContent = r.loc.length ? r.loc.join('\n') : '—（未发现或已被 mDNS 隐藏）';
     var ext = await fetchIp(subdomainPath('test'));
     $('ext').textContent = ext || '—';
-    var verdict = $('verdict');
+    // family 对齐：ext 来自 HTTP 出口（IPv6 优先时 /test 返回 IPv6），srflx 的协议族取决于 STUN 路径，二者无同族契约——
+    // 跨族字符串比较恒不相等，会对无泄漏的 IPv6 优先用户误报泄漏；无同族公网映射属「无法对比」而非「泄漏」
+    var extFamily = ext ? familyOf(ext) : null;
     var pubOnly = r.pub.filter(isPublicIp);
-    if (ext && pubOnly.length) {
-      if (pubOnly.indexOf(ext) !== -1) { verdict.className = 'verdict ok'; verdict.textContent = 'WebRTC 公网 IP 与当前出口 IP 一致，未发现 WebRTC 泄漏。'; }
-      else { verdict.className = 'verdict warn'; verdict.textContent = 'WebRTC 暴露了不同的公网 IP（' + pubOnly.join(', ') + '），与当前出口（' + ext + '）不一致，可能存在 WebRTC 泄漏（如 VPN/代理未覆盖）。'; }
-    } else if (ext) { verdict.className = 'verdict warn'; verdict.textContent = '未获取到 WebRTC 公网映射（STUN 不可达或网络限制），无法对比；已显示的局域网 IP 属于本机网卡。'; }
-    else { verdict.className = 'verdict err'; verdict.textContent = '无法获取当前出口 IP，请返回主页重试。'; }
+    var sameFamilyPub = pubOnly.filter(function (p) { return familyOf(p) === extFamily; });
+    if (ext && sameFamilyPub.length) {
+      if (sameFamilyPub.indexOf(ext) !== -1) setVerdict('ok', 'WebRTC 公网 IP 与当前出口 IP 一致，未发现 WebRTC 泄漏。');
+      else setVerdict('warn', 'WebRTC 暴露了不同的公网 IP（' + sameFamilyPub.join(', ') + '），与当前出口（' + ext + '）不一致，可能存在 WebRTC 泄漏（如 VPN/代理未覆盖）。');
+    } else if (ext) setVerdict('warn', '未获取到与出口同协议族的 WebRTC 公网映射（STUN 不可达、网络限制、协议族不匹配或映射为 CGNAT 私网），无法对比；已显示的局域网 IP 属于本机网卡。');
+    else setVerdict('err', '无法获取当前出口 IP，请返回主页重试。');
     btn.disabled = false; btn.textContent = '重新检测';
   }
 
@@ -125,9 +137,9 @@ const WEBRTC_HTML = (() => {
   rows.push('<header><h1>WebRTC 检查</h1><a href="/">← 返回</a></header>');
   rows.push('<div class="sub">检测浏览器 WebRTC 暴露的网络地址：公网 IP（经 STUN 反射）与本机局域网 IP。结果仅在本机浏览器内计算，不会发送到服务器。</div>');
   rows.push('<button id="run">开始检测</button>');
-  rows.push('<div class="field"><div class="lbl"><span>公网 IP（WebRTC）</span><span class="st" id="pub-st"></span></div><div class="ip" id="pub">—</div></div>');
-  rows.push('<div class="field"><div class="lbl"><span>局域网 IP</span><span class="st" id="loc-st"></span></div><div class="ip" id="loc">—</div></div>');
-  rows.push('<div class="field"><div class="lbl"><span>当前出口 IP</span><span class="st" id="ext-st"></span></div><div class="ip" id="ext">—</div></div>');
+  rows.push('<div class="field"><div class="lbl"><span>公网 IP（WebRTC）</span></div><div class="ip" id="pub">—</div></div>');
+  rows.push('<div class="field"><div class="lbl"><span>局域网 IP</span></div><div class="ip" id="loc">—</div></div>');
+  rows.push('<div class="field"><div class="lbl"><span>当前出口 IP</span></div><div class="ip" id="ext">—</div></div>');
   rows.push('<div class="verdict" id="verdict"></div>');
   rows.push('<div class="note">说明：检测依赖 STUN 服务器（stun.miwifi.com），个别网络不可达时仅显示局域网 IP。浏览器以 mDNS 隐藏局域网地址时显示为 .local。WebRTC 泄露指浏览器绕过 VPN/代理暴露真实公网 IP，本页可帮助判断当前浏览器是否如此。</div>');
   rows.push('</div>');
