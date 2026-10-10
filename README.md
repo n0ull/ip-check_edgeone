@@ -29,7 +29,7 @@ ip-check/
 ├── edge-functions/
 │   ├── _shared.js          # 共享工具函数与端点处理器（index.js / [[default]].js 共用）
 │   ├── index.js            # 匹配 "/"：查询网页 + 按 Host 分发 4./test.
-│   └── [[default]].js      # 匹配其余路径：/4 /test /api/* 等路径式端点
+│   └── [[default]].js      # 匹配其余路径：/4 /test /api/self /webrtc 等路径式端点
 ├── .githooks/
 │   └── pre-commit          # 提交前预检（npm install 自动启用，见「二、本地调试」）
 ├── scripts/

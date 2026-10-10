@@ -29,7 +29,8 @@ export function isIpv6(ip) {
   return typeof ip === 'string' && ip.indexOf(':') !== -1;
 }
 
-/** 协议族判定：'IPv6' | 'IPv4'；空/非法输入返回 null——未知标签由调用点按上下文补充（页面『未知』/API『unknown』） */
+/** 协议族判定：'IPv6' | 'IPv4'；空/非法输入返回 null——第三态语义留调用点：/api/self 补 'unknown'；
+    页面侧不补充（服务端徽章由 renderUi『检测中…』兜底、浏览器 init 走『无法判定』） */
 export function familyOf(ip) {
   if (!ip) return null;
   return isIpv6(ip) ? 'IPv6' : 'IPv4';

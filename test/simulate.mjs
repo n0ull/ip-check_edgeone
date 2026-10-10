@@ -154,15 +154,22 @@ await section('[[default]].js · 路径端点', async () => {
 
   let r = await call(catchAllMod, 'ip.example.com', p4, { eo: eo4 });
   check('/4 返回 IPv4', r.res.status === 200 && r.body.trim() === '8.8.8.8');
-  r = await call(catchAllMod, 'ip.example.com', '/api/v4', { eo: eo4 });
-  check('/api/v4 返回 IPv4', r.res.status === 200 && r.body.trim() === '8.8.8.8');
-  r = await call(catchAllMod, 'ip.example.com', '/api/v4?format=json', { eo: eo4 });
+  r = await call(catchAllMod, 'ip.example.com', p4 + '?format=json', { eo: eo4 });
   let j = null; try { j = JSON.parse(r.body); } catch (_) {}
-  check('/api/v4?format=json 输出 JSON', !!j && j.ip === '8.8.8.8' && j.family === 'IPv4');
+  check('/4?format=json 输出 JSON', !!j && j.ip === '8.8.8.8' && j.family === 'IPv4');
 
-  r = await call(catchAllMod, 'ip.example.com', '/api/v4', { eo: eo4, headers: { accept: 'application/json' } });
+  r = await call(catchAllMod, 'ip.example.com', p4, { eo: eo4, headers: { accept: 'application/json' } });
   j = null; try { j = JSON.parse(r.body); } catch (_) {}
-  check('/api/v4 Accept: application/json 输出 JSON', !!j && j.ip === '8.8.8.8' && j.family === 'IPv4');
+  check('/4 Accept: application/json 输出 JSON', !!j && j.ip === '8.8.8.8' && j.family === 'IPv4');
+
+  // 钉死三个已删别名的字面量（钉来源不钉副本的例外：别名已删除，fact 不再覆盖它们）；
+  // 单断言内循环保持断言计数稳定，失败时 detail 列出各别名实测状态码
+  const aliasStatuses = [];
+  for (const a of ['/api/4', '/api/v4', '/api/test']) {
+    r = await call(catchAllMod, 'ip.example.com', a, { eo: eo4 });
+    aliasStatuses.push(a + '=' + r.res.status);
+  }
+  check('/api/* 别名已移除 → 404', aliasStatuses.every(s => s.endsWith('=404')), aliasStatuses.join(' '));
 
   r = await call(catchAllMod, 'ip.example.com', p4, { eo: eo4, method: 'POST' });
   check('POST /4 → 405 + Allow', r.res.status === 405 && (r.res.headers.get('allow') || '').includes('GET'));

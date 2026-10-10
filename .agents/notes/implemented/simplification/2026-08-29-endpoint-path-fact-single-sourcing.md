@@ -20,7 +20,7 @@ Status: implemented
 
 - **页面**：grab 回退改 `fetch(subdomainPath(sub))`；index.js 幽灵命名 import 该符号使 esbuild 保留原符号名（与 [[default]].js 的 isIpv4 同一契约，见改名笔记 Decision 1）。
 - **webrtc 页**：`run()` 的出口 IP fetch 改 `fetchIp(subdomainPath('test'))`（2026-08-29 三轮评审补全第 5 副本；符号已在入口命名 import——switch/hint 消费中，esbuild 改名防护免费，browserScript 自动拣选进 WEBRTC_SCRIPT）。
-- **服务端**：`[[default]].js` 路由 switch 以 `case subdomainPath('4'):` / `case subdomainPath('test'):` 结构性消费——case 标签就是 fact，页面回退与服务端路由的漂移在构造上不可能。`/api/*` 别名是纯服务端同义词（页面永不使用），保持字面量。
+- **服务端**：`[[default]].js` 路由 switch 以 `case subdomainPath('4'):` / `case subdomainPath('test'):` 结构性消费——case 标签就是 fact，页面回退与服务端路由的漂移在构造上不可能。（原随附的 `/api/*` 字面量别名已于 2026-10-10 删除，见[删除臆想需求表面笔记](./2026-10-10-remove-imagined-need-surface.md)。）
 - **404 hint**：子域段拼接 fact，/4 /test 部分在任何 fact 变更下自动保持真实（回退若改走别的路径，列出该路径的 hint 依然正确）；`/api/self` 与回退无关，保持字面量。
 - **测试三侧派生**（钉来源，不钉副本）：simulate 页面侧路径断言改从 fact 派生，并新增 fact 纯函数断言节与 404 hint 内容钉；ui-dom 路径 2 的路由键取 fact、响应体从真实 `[[default]].js` onRequest 派生（ui-dom 路径 4 先例）；bundle-gate UI 段新增同源回退分支块，响应体从打包 `[[default]].js` onRequest 派生——复刻真实拓扑（index 打包页 → 同源路径 → [[default]] 打包服务端），见[打包门禁笔记](../testing/2026-08-29-bundle-gate.md)。
 
@@ -32,7 +32,7 @@ fact 函数自包含（无传递依赖）；未知子域返回 null 方向保守
 架构评审初版推荐：simulate 加一条「onRequest 在 fact 路径上返回 IP」的行为钉，switch 不动。落选：钉是门禁不是构造——「红 → 机械更新钉 → 全绿」恰是本候选要杀的陷阱本身。[页面脚本作用域定案](../architecture/2026-08-29-page-script-scope-and-browserscript.md)确立的标准是正确性 > 稳定性：漂移应在构造上不可能，而非被测试拦住后靠人判断修正方向。
 
 ### Why not 全路由映射（routeTarget(path) + primaryPath(target)）？
-别名一并单源、switch 改写为映射驱动，单源最彻底。落选：别名无法对页面漂移（页面不用它们），为它们引入第二层间接是零正确性收益的认知税；`/api/4` 等别名从路由表一眼可见变为藏进实现。回评条件：别名数量增长到路由表不可读。
+别名一并单源、switch 改写为映射驱动，单源最彻底。落选：别名无法对页面漂移（页面不用它们），为它们引入第二层间接是零正确性收益的认知税；`/api/4` 等别名从路由表一眼可见变为藏进实现。回评条件：别名数量增长到路由表不可读。（别名已于 2026-10-10 随[删除臆想需求表面笔记](./2026-10-10-remove-imagined-need-surface.md)删除，该回评条件随之失效。）
 
 ### Why not 仅测试侧派生（不动生产代码）？
 ui-dom/simulate 全部改派生即可消测试副本。落选：grab 的 `'/' + sub` 字面量仍在，页面↔服务端一致性只靠测试纪律维持，fact 在生产代码里仍是两份。

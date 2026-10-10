@@ -2,10 +2,11 @@
  * EdgeOne Makers Edge Function — IP 查询服务（通配路径）
  *
  * 本文件匹配除 "/" 之外的所有路径（[[default]] 不匹配根路径，根路径由 index.js 处理）。
- * 提供路径式端点，便于本地调试（edgeone makers dev）与习惯用法：
- *   /4  /api/4  /api/v4  → 返回访问者 IPv4（纯文本）
- *   /test /api/test       → 返回本次连接实际使用的 IP（IPv6 即 IPv6 访问优先）
- *   /api/self             → 返回本次请求的 IP 与协议族（JSON）
+ * 提供路径式端点，便于本地调试（edgeone makers dev）与页面同源回退：
+ *   /4        → 返回访问者 IPv4（纯文本）
+ *   /test     → 返回本次连接实际使用的 IP（IPv6 即 IPv6 访问优先）
+ *   /api/self → 返回本次请求的 IP 与协议族（JSON）
+ *   /webrtc   → WebRTC 泄漏检查页（公网/局域网 IP 与泄漏判定，纯浏览器端）
  *
  * 共享工具函数（getClientIp / familyOf / methodGuard / handleV4 / handleTest 等）
  * 由 ./_shared.js 统一提供，本文件 import 所需符号，不再内联副本。
@@ -29,6 +30,7 @@ function webrtcScriptScope() {
 
   function addIp(arr, ip) { if (ip && arr.indexOf(ip) < 0) arr.push(ip); }
 
+  // 非公网判定：IPv4 拒私网/回环/链路本地；IPv6 拒 ULA（fc00::/7，即 fc…/fd… 前缀）与链路本地（fe80::/10）
   function isPublicIp(ip) {
     return isIpv4(ip)
       ? !/^(10\.|127\.|169\.254\.|192.168\.|172\.(1[6-9]|2[0-9]|3[01])\.)/.test(ip)
@@ -41,6 +43,7 @@ function webrtcScriptScope() {
       var t = toks[i];
       if (!t || t === '0.0.0.0' || t === '::') continue;
       if (isIpv4(t)) return t;
+      // IPv6 启发式（候选行里无严格解析可用）：字符集全为 IPv6 字符，且含 :: 压缩或段数 ≥4——短段数 token 多为候选行其他字段（foundation、端口等）
       if (t.indexOf(':') !== -1 && /^[0-9a-f:.]+$/i.test(t) && (t.indexOf('::') !== -1 || t.split(':').length >= 4)) return t;
     }
     return null;
@@ -146,14 +149,11 @@ export async function onRequest(context) {
   } catch (_) { /* ignore */ }
 
   // 页面侧路径以 case 标签消费端点路径 fact（subdomainPath，见 _shared.js）：grab 同源回退与
-  // 服务端路由共用同一实现，两侧漂移在构造上不可能；/api/* 别名是纯服务端同义词，保持字面量
+  // 服务端路由共用同一实现，两侧漂移在构造上不可能
   switch (path) {
     case subdomainPath('4'):
-    case '/api/4':
-    case '/api/v4':
       return handleV4(request);
     case subdomainPath('test'):
-    case '/api/test':
       return handleTest(request);
     case '/webrtc':
       return new Response(WEBRTC_HTML, {

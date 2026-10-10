@@ -27,16 +27,12 @@ export const SUBDOMAIN_HANDLERS = {
   'test': handleTest,
 };
 
-/** Host 解析：request.url 的 hostname（URL 解析自动小写、自动剥端口）；解析失败回退 Host 头
-    （生产恒为绝对 URL，此分支测试不可达——无法构造解析失败的 Request；小写化为与 URL 路径统一的防御）。
+/** Host 解析：request.url 的 hostname（URL 解析自动小写、自动剥端口）。
+    解析失败 hostname 落空串 → sub/base 均空，落查询网页分支，页面卡片经 grab 同源回退兜底。
     首标签命中分发表才提取 sub；未命中时 base 为整 hostname（如 foo.4.ip.<域名>），由同源回退兜底。 */
 export function hostInfo(request) {
   let hostname = '';
   try { hostname = new URL(request.url).hostname; } catch (_) { /* ignore */ }
-  if (!hostname) {
-    const host = request.headers.get('host') || '';
-    hostname = host.split(':')[0].toLowerCase();
-  }
   const labels = hostname.split('.');
   // hasOwnProperty.call 而非 Object.hasOwn（ES2022）：不把全站分发押在边缘运行时未验证的内建上；
   // 防原型键（如 'constructor'）经 labels[0] 误命中
@@ -67,6 +63,11 @@ function uiScriptScope() {
     return t && t.length <= 64 && !/[一-龥]/.test(t) && (t.indexOf('.') !== -1 || t.indexOf(':') !== -1);
   }
 
+  // 端点出错时返回中文错误体（如 v4 端点的『当前通过 IPv6 连接…』）：据此区分『服务可达但拒绝』与『请求失败』
+  function isServerErrorText(t) {
+    return !!t && /[一-龥]/.test(t);
+  }
+
   async function grab(base, sub, label) {
     var text = null;
     var viaFallback = false;
@@ -80,7 +81,7 @@ function uiScriptScope() {
         var res2 = await fetch(subdomainPath(sub), { cache: 'no-store' });
         var t2 = (await res2.text()).trim();
         if (res2.ok && looksLikeIp(t2)) { text = t2; viaFallback = true; }
-        else if (t2 && /[一-龥]/.test(t2)) {
+        else if (isServerErrorText(t2)) {
           var reason = t2.split('，')[0] || '不可用';
           setStatus(label + '-status', reason, 'err');
           return null;
@@ -103,15 +104,15 @@ function uiScriptScope() {
       grab(base, 'test', 'test')
     ]);
     var verdict = document.getElementById('verdict');
-    var t = results[1];
-    var f = t ? familyOf(t) : null;
+    var testIp = results[1];
+    var f = testIp ? familyOf(testIp) : null;
     var v = f ? verdictFor(f) : null;
     if (v) { verdict.textContent = v.text; verdict.className = v.cls; }
     else { verdict.textContent = '无法判定'; verdict.className = 'badge unknown'; }
     if (f === 'IPv4') { setStatus('test-status', '本次连接为 IPv4，无法判定 IPv6 是否存在', 'warn'); }
     // IPv6 卡片：由双栈测试结果派生（IPv6 连接时 test 返回的地址即你的 IPv6）
     if (f === 'IPv6') {
-      document.getElementById('v6').textContent = t;
+      document.getElementById('v6').textContent = testIp;
       setStatus('v6-status', 'OK', 'ok');
     } else if (f) {
       setStatus('v6-status', '当前连接为 IPv4，未获取到 IPv6', 'err');
@@ -217,7 +218,8 @@ export async function onRequest(context) {
 
   // 根域名 / ip. 前缀 / Makers 默认域名 / 未知前缀 → 返回查询网页（首屏徽章：消费点自取 IP）
   const ip = getClientIp(request);
-  const family = familyOf(ip) || '未知';
+  // family 可为 null：verdictFor 只认 IPv4/IPv6，其余一律由 renderUi 的『检测中…』兜底，此处无需补第三态标签
+  const family = familyOf(ip);
   return new Response(renderUi(family, info.base), {
     status: 200,
     headers: baseHeaders({ 'content-type': 'text/html; charset=utf-8' }),

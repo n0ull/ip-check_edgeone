@@ -8,7 +8,7 @@ Status: implemented
 
 ## Decision
 
-- 新增共享函数 `familyOf(ip) → 'IPv6' | 'IPv4' | null`（两文件双份内联、export，自动落入交集一致性门禁）；空输入返回 null，未知标签由调用点按上下文补充（页面 `'未知'`、API `'unknown'`）——有意分叉从藏在三元里变为调用点显式可见；`handleTest`、`onRequest`、`/api/self` 的三元全部改经 `familyOf`；
+- 新增共享函数 `familyOf(ip) → 'IPv6' | 'IPv4' | null`（两文件双份内联、export，自动落入交集一致性门禁）；空输入返回 null，第三态语义留调用点：`/api/self` 补 `'unknown'`；页面侧不补充——服务端徽章由 renderUi『检测中…』兜底、浏览器 init 走『无法判定』（原页面侧 `'未知'` 补充已于 2026-10-10 删除，见[删除臆想需求表面笔记](./2026-10-10-remove-imagined-need-surface.md)）——有意分叉从藏在三元里变为调用点显式可见；`handleTest`、`onRequest`、`/api/self` 的三元全部改经 `familyOf`；
 - 新增 `verdictFor(family) → { text, cls } | null`（页面专属；2026-08-29 起居 _shared.js，迁移见[页面脚本作用域笔记](../architecture/2026-08-29-page-script-scope-and-browserscript.md)）：IPv6/IPv4 两态徽章文案与完整 className 的唯一来源；`renderUi`（服务端首屏）与 `init`（浏览器校准）共用同一实现——后者经 `UI_SCRIPT` 的 `toString()` 序列化注入页面（复用[浏览器脚本即真实函数](2026-08-26-browser-js-as-real-functions.md)的既定机制；`isIpv6`/`familyOf`/`verdictFor` 当时追加进序列化清单，`isIpv6` 是 `familyOf` 的依赖，缺一即在页面上下文 ReferenceError）；
 - **第三态不合并**：服务端 `'检测中…'`（尚未发生）与浏览器 `'无法判定'`（已失败）语义不同，各留调用点；模板占位符改为承载完整 className（`class="__VERDICT_CLS__"`），消除「`badge ` 前缀烙在模板、浏览器全量赋值」的半个隐式接口；
 - 测试：`simulate.mjs` 对 `familyOf`/`verdictFor` 做纯函数断言（措辞契约钉在函数上）；`ui-dom.mjs` 中文错误用例改为从 `onRequest` 真实 400 输出派生期望值（`errBody.split('，')[0]`），钉来源不钉副本。
