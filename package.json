@@ -11,6 +11,8 @@
     "prepare": "node scripts/install-hooks.mjs"
   },
   "devDependencies": {
-    "esbuild": "^0.28.2"
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2",
+    "typescript-language-server": "^6.0.2"
   }
 }

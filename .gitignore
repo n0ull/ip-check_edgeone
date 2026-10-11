@@ -9,3 +9,5 @@ dist/
 
 .omc/
 .serena/
+skills-lock.json
+.agents/skills/modern-web-guidance
